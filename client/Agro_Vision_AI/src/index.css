@@ -1,0 +1,49 @@
+@import "tailwindcss";
+
+/* AgroVision AI Theme Variables */
+:root {
+  --primary: #16a34a;
+  --primary-hover: #15803d;
+  --background: #f8fafc;
+  --card: #ffffff;
+  --border: #e2e8f0;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+}
+
+/* Reusable Input Style */
+.input {
+  @apply w-full px-4 py-3 rounded-xl border border-slate-200 
+  focus:outline-none focus:ring-2 focus:ring-green-400/40;
+}
+
+
+@keyframes enter {
+  from {
+    opacity: 0;
+    transform: translateX(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes leave {
+  from {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(20px) scale(0.95);
+  }
+}
+
+.animate-enter {
+  animation: enter 0.3s ease forwards;
+}
+
+.animate-leave {
+  animation: leave 0.2s ease forwards;
+}
