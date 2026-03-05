@@ -81,9 +81,9 @@ const Navbar = () => {
   /* =========================
      Logout
   ========================= */
-  const handleLogout = () => {
+  const handleLogout = async () => {
 
-    logout();
+    await logout();
 
     navigate("/login");
 

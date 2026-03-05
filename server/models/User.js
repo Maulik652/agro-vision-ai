@@ -5,7 +5,9 @@ const userSchema = new mongoose.Schema(
   name: {
     type: String,
     required: true,
-    trim: true
+    trim: true,
+    minlength: 2,
+    maxlength: 80
   },
 
   email: {
@@ -13,18 +15,22 @@ const userSchema = new mongoose.Schema(
     required: true,
     unique: true,
     lowercase: true,
-    trim: true
+    trim: true,
+    maxlength: 120
   },
 
   phone: {
     type: String,
-    required: true
+    required: true,
+    trim: true,
+    maxlength: 20
   },
 
   password: {
     type: String,
     required: true,
-    minlength: 6
+    minlength: 8,
+    select: false
   },
 
   role: {
@@ -35,12 +41,14 @@ const userSchema = new mongoose.Schema(
 
   state: {
     type: String,
-    required: true
+    required: true,
+    trim: true
   },
 
   city: {
     type: String,
-    required: true
+    required: true,
+    trim: true
   },
 
   farmSize: Number,
@@ -50,7 +58,24 @@ const userSchema = new mongoose.Schema(
   license: String,
 
   qualification: String,
-  experience: Number
+  experience: Number,
+
+  failedLoginAttempts: {
+    type: Number,
+    default: 0,
+    select: false
+  },
+
+  lockUntil: {
+    type: Date,
+    default: null,
+    select: false
+  },
+
+  lastLoginAt: {
+    type: Date,
+    default: null
+  }
 
 },
 { timestamps: true }

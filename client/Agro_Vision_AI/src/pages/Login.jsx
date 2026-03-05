@@ -3,6 +3,7 @@ import { Mail, Lock, Eye, EyeOff } from "lucide-react";
 import api from "../api/axios";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { getApiErrorMessages, getApiFieldErrors } from "../utils/apiError";
 
 /* ✅ Custom Toast */
 import { showSuccess, showError, showWarning } from "../utils/toastConfig";
@@ -13,6 +14,8 @@ const Login = () => {
 
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [formError, setFormError] = useState("");
 
   const [form, setForm] = useState({
     email: "",
@@ -23,27 +26,47 @@ const Login = () => {
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
 
-    setForm({
-      ...form,
+    setForm((prev) => ({
+      ...prev,
       [name]:
         type === "checkbox"
           ? checked
           : name === "email"
           ? value.toLowerCase()
           : value,
-    });
+    }));
+
+    setFieldErrors((prev) => ({
+      ...prev,
+      [name]: "",
+    }));
+
+    setFormError("");
   };
 
   const isValid = form.email && form.password;
 
   const handleLogin = async () => {
-    if (!form.email || !form.password) {
+    const clientErrors = {};
+
+    if (!form.email) {
+      clientErrors.email = "Email is required";
+    }
+
+    if (!form.password) {
+      clientErrors.password = "Password is required";
+    }
+
+    if (Object.keys(clientErrors).length > 0) {
+      setFieldErrors(clientErrors);
       showWarning("Email and password are required");
       return;
     }
 
     try {
       setLoading(true);
+      setFieldErrors({});
+      setFormError("");
 
       const res = await api.post("/auth/login", {
         email: form.email,
@@ -74,7 +97,24 @@ const Login = () => {
         navigate("/");
       }
     } catch (error) {
-      showError(error.response?.data?.message || "Login failed");
+      const messages = getApiErrorMessages(error, "Login failed");
+      const apiFieldErrors = getApiFieldErrors(error);
+      const { _form, ...restFieldErrors } = apiFieldErrors;
+
+      if (Object.keys(restFieldErrors).length > 0) {
+        setFieldErrors((prev) => ({
+          ...prev,
+          ...restFieldErrors,
+        }));
+      }
+
+      setFormError(_form || messages[0]);
+      showError(messages[0]);
+
+      if (messages.length > 1) {
+        showWarning(`Please fix ${messages.length} validation issues.`);
+      }
+
       console.error("Login error:", error);
     } finally {
       setLoading(false);
@@ -95,38 +135,56 @@ const Login = () => {
         </div>
 
         <div className="space-y-4">
+
+          {formError && (
+            <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              {formError}
+            </div>
+          )}
           
           <Input
             icon={Mail}
             name="email"
+            type="email"
             value={form.email}
             onChange={handleChange}
             placeholder="Email address"
+            error={fieldErrors.email}
           />
 
-          <div className="relative">
-            <Lock
-              size={18}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-            />
+          <div>
+            <div className="relative">
+              <Lock
+                size={18}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+              />
 
-            <input
-              type={showPassword ? "text" : "password"}
-              name="password"
-              value={form.password}
-              onChange={handleChange}
-              placeholder="Password"
-              className="w-full pl-10 pr-10 py-3 border border-slate-300 rounded-xl
-              focus:outline-none focus:ring-2 focus:ring-green-500/30 focus:border-green-500 transition"
-            />
+              <input
+                type={showPassword ? "text" : "password"}
+                name="password"
+                value={form.password}
+                onChange={handleChange}
+                placeholder="Password"
+                className={`w-full pl-10 pr-10 py-3 border rounded-xl
+                focus:outline-none focus:ring-2 transition
+                ${fieldErrors.password
+                  ? "border-red-400 focus:ring-red-500/20 focus:border-red-500"
+                  : "border-slate-300 focus:ring-green-500/30 focus:border-green-500"
+                }`}
+              />
 
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-            >
-              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-            </button>
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+
+            {fieldErrors.password && (
+              <p className="text-xs text-red-600 mt-1">{fieldErrors.password}</p>
+            )}
           </div>
 
           <div className="flex items-center justify-between text-sm">
@@ -192,20 +250,31 @@ const Login = () => {
   );
 };
 
-const Input = ({ icon: Icon, placeholder, name, value, onChange }) => (
-  <div className="relative">
-    <Icon
-      size={18}
-      className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-    />
-    <input
-      name={name}
-      value={value}
-      onChange={onChange}
-      placeholder={placeholder}
-      className="w-full pl-10 pr-3 py-3 border border-slate-300 rounded-xl
-      focus:outline-none focus:ring-2 focus:ring-green-500/30 focus:border-green-500 transition"
-    />
+const Input = ({ icon: Icon, placeholder, name, value, onChange, error, type = "text" }) => (
+  <div>
+    <div className="relative">
+      <Icon
+        size={18}
+        className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+      />
+      <input
+        type={type}
+        name={name}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        className={`w-full pl-10 pr-3 py-3 border rounded-xl
+        focus:outline-none focus:ring-2 transition
+        ${error
+          ? "border-red-400 focus:ring-red-500/20 focus:border-red-500"
+          : "border-slate-300 focus:ring-green-500/30 focus:border-green-500"
+        }`}
+      />
+    </div>
+
+    {error && (
+      <p className="text-xs text-red-600 mt-1">{error}</p>
+    )}
   </div>
 );
 

@@ -4,6 +4,7 @@ import axios from "axios";
 const api = axios.create({
   baseURL: "http://localhost:5000/api",
   timeout: 10000, // 10 seconds timeout
+  withCredentials: true,
   headers: {
     "Content-Type": "application/json",
   },
@@ -42,7 +43,10 @@ api.interceptors.response.use(
     if (error.response) {
 
       /* TOKEN EXPIRED OR INVALID */
-      if (error.response.status === 401) {
+      const requestUrl = error.config?.url || "";
+      const isAuthEndpoint = requestUrl.includes("/auth/login") || requestUrl.includes("/auth/register");
+
+      if (error.response.status === 401 && !isAuthEndpoint) {
 
         localStorage.removeItem("token");
         localStorage.removeItem("user");

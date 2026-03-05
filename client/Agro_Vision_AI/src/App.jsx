@@ -68,14 +68,12 @@ function App() {
 </Route>
 
             {/* ================= BUYER ROUTES ================= */}
-            <Route element={<ProtectedRoute allowedRoles={["farmer"]} />}>
+            <Route element={<ProtectedRoute allowedRoles={["buyer"]} />}>
 
-  <Route path="/farmer/dashboard" element={<FarmerDashboard />} />
-  <Route path="/farmer/scan" element={<AIScan />} />
-  <Route path="/farmer/predictions" element={<Predictions />} />
-  <Route path="/farmer/marketplace" element={<FarmerMarketplace />} />
-  <Route path="/farmer/advisory" element={<FarmerAdvisory />} />
-  <Route path="/farmer/weather" element={<Weather />} />
+  <Route path="/buyer/dashboard" element={<BuyerDashboard />} />
+  <Route path="/buyer/marketplace" element={<BuyerMarketplace />} />
+  <Route path="/buyer/orders" element={<BuyerOrders />} />
+  <Route path="/buyer/profile" element={<BuyerProfile />} />
 
 </Route>
 
