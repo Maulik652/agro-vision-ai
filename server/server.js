@@ -15,6 +15,14 @@ import farmRoutes from "./routes/farmRoutes.js";
 import weatherRoutes from "./routes/weatherRoutes.js";
 import marketRoutes from "./routes/marketRoutes.js";
 import soilRoutes from "./routes/soilRoutes.js";
+import satelliteRoutes from "./routes/satelliteRoutes.js";
+import farmGPTRoutes from "./routes/farmGPTRoutes.js";
+import calendarRoutes from "./routes/calendarRoutes.js";
+import expenseRoutes from "./routes/expenseRoutes.js";
+import notificationRoutes from "./routes/notificationRoutes.js";
+import communityRoutes from "./routes/communityRoutes.js";
+import schemeRoutes from "./routes/schemeRoutes.js";
+import fieldRoutes from "./routes/fieldRoutes.js";
 
 dotenv.config();
 
@@ -61,6 +69,14 @@ app.use("/api/scan", scanRoutes);
 app.use("/api/crops", cropRoutes);
 app.use("/api/buyers", buyerRoutes);
 app.use("/api/ai", marketAIRoutes);
+app.use("/api/satellite", satelliteRoutes);
+app.use("/api/farmgpt", farmGPTRoutes);
+app.use("/api/calendar", calendarRoutes);
+app.use("/api/expenses", expenseRoutes);
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/community", communityRoutes);
+app.use("/api/schemes", schemeRoutes);
+app.use("/api/fields", fieldRoutes);
 
 /* HEALTH CHECK ROUTE */
 app.get("/", (req, res) => {

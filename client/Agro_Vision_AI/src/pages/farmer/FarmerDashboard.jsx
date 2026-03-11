@@ -1820,26 +1820,7 @@ const FarmerDashboard = () => {
           </GlassCard>
         </LazySection>
 
-        <GlassCard className="p-4 sm:p-5 border-stone-200 bg-stone-50/80">
-          <div className="grid md:grid-cols-3 gap-3 text-sm">
-            <div className="rounded-xl border border-stone-200 bg-white/80 px-3 py-2.5">
-              <p className="text-xs text-slate-500">Farm Profile API</p>
-              <p className="font-medium text-slate-800">GET /api/farm/profile or GET /api/auth/me</p>
-            </div>
-            <div className="rounded-xl border border-stone-200 bg-white/80 px-3 py-2.5">
-              <p className="text-xs text-slate-500">Weather + Soil APIs</p>
-              <p className="font-medium text-slate-800">GET /api/weather and /api/soil/data with AI weather fallback</p>
-            </div>
-            <div className="rounded-xl border border-stone-200 bg-white/80 px-3 py-2.5">
-              <p className="text-xs text-slate-500">AI Prediction APIs</p>
-              <p className="font-medium text-slate-800">POST /api/ai or /api/predict modules plus GET /api/crops/high-demand</p>
-            </div>
-          </div>
-          <div className="mt-3 text-xs text-slate-500 inline-flex items-center gap-2">
-            <RefreshCw size={13} className={refreshing ? "animate-spin" : ""} />
-            Uses API caching, lazy-rendered sections, skeleton loaders, and resilient fallback data.
-          </div>
-        </GlassCard>
+        
       </div>
     </div>
   );

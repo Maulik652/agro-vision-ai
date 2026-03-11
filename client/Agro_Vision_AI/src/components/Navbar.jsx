@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { Menu, X } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import NotificationBell from "./NotificationBell";
 
 const Navbar = () => {
 
@@ -16,7 +17,7 @@ const Navbar = () => {
      Active Link Style
   ========================= */
   const navLinkStyle = ({ isActive }) =>
-    `text-sm font-medium transition duration-300 ${
+    `text-sm font-medium transition duration-300 whitespace-nowrap ${
       isActive
         ? "text-green-400"
         : "text-slate-200 hover:text-green-400"
@@ -26,8 +27,8 @@ const Navbar = () => {
   /* =========================
      Role Based Links
   ========================= */
-  const navLinksByRole = {
 
+  const links = {
     guest: [
       { name: "Home", path: "/" },
       { name: "Features", path: "/features" },
@@ -40,11 +41,11 @@ const Navbar = () => {
       { name: "Dashboard", path: "/farmer/dashboard" },
       { name: "AI Scan", path: "/farmer/scan" },
       { name: "Predictions", path: "/farmer/predictions" },
+      { name: "Advisory", path: "/farmer/advisory" },
       { name: "Marketplace", path: "/farmer/marketplace" },
       { name: "Sell Crop", path: "/farmer/sell-crop" },
-      { name: "Advisory", path: "/farmer/advisory" },
       { name: "Weather", path: "/farmer/weather" },
-      { name: "Satellite", path: "/farmer/satellite-monitoring" }
+      { name: "FarmGPT", path: "/farmer/farmgpt" }
     ],
 
     buyer: [
@@ -64,32 +65,23 @@ const Navbar = () => {
     admin: [
       { name: "Admin Dashboard", path: "/admin/dashboard" }
     ]
-
   };
 
-  const links = navLinksByRole[role] || navLinksByRole.guest;
+  const navLinks = links[role] || links.guest;
 
 
   /* =========================
      Logout
   ========================= */
+
   const handleLogout = async () => {
-
     await logout();
-
     navigate("/login");
-
   };
 
-
-  /* =========================
-     Navigate helper
-  ========================= */
   const handleNavigate = (path) => {
-
     setMenuOpen(false);
     navigate(path);
-
   };
 
 
@@ -99,33 +91,29 @@ const Navbar = () => {
 
       <div className="max-w-7xl mx-auto h-16 flex items-center justify-between px-6">
 
-
         {/* Logo */}
         <div
           onClick={() => handleNavigate("/")}
           className="text-lg font-semibold text-white cursor-pointer hover:text-green-400 transition"
         >
-          🌿 AgroVision AI
+          🌿 AgroVision AI 🌿
         </div>
 
 
-
         {/* Desktop Links */}
-        <div className="hidden md:flex items-center gap-8">
+        <div className="hidden md:flex items-center gap-5 lg:gap-6">
 
-          {links.map((link) => (
+          {navLinks.map((link) => (
             <NavLink
               key={link.name}
               to={link.path}
               className={navLinkStyle}
-              onClick={() => setMenuOpen(false)}
             >
               {link.name}
             </NavLink>
           ))}
 
         </div>
-
 
 
         {/* Desktop Buttons */}
@@ -153,6 +141,8 @@ const Navbar = () => {
 
             <div className="flex items-center gap-4">
 
+              {role === "farmer" && <NotificationBell />}
+
               <span className="text-white text-sm hidden lg:block">
                 {user.name}
               </span>
@@ -169,7 +159,6 @@ const Navbar = () => {
           )}
 
         </div>
-
 
 
         {/* Mobile Toggle */}
@@ -189,17 +178,17 @@ const Navbar = () => {
       </div>
 
 
-
       {/* Mobile Menu */}
       {menuOpen && (
 
-        <div className="md:hidden bg-[#14532D] py-4 flex flex-col items-center gap-4">
+        <div className="md:hidden bg-[#14532D] py-4 flex flex-col items-center gap-3">
 
-          {links.map((link) => (
+          {navLinks.map((link) => (
             <NavLink
               key={link.name}
               to={link.path}
               className={navLinkStyle}
+              onClick={() => setMenuOpen(false)}
             >
               {link.name}
             </NavLink>

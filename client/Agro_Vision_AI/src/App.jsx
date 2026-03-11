@@ -22,6 +22,11 @@ import SellCrop from "./pages/farmer/SellCrop";
 import FarmerAdvisory from "./pages/farmer/Advisory";
 import Weather from "./pages/farmer/Weather";
 import SatelliteMonitoring from "./pages/farmer/SatelliteMonitoring";
+import FarmGPT from "./pages/farmer/FarmGPT";
+import FarmManager from "./pages/farmer/FarmManager";
+import CropCalendar from "./pages/farmer/CropCalendar";
+import FarmFinance from "./pages/farmer/FarmFinance";
+import Community from "./pages/farmer/Community";
 
 /* Buyer Pages */
 import BuyerDashboard from "./pages/buyer/BuyerDashboard";
@@ -69,6 +74,11 @@ function App() {
   <Route path="/farmer/advisory" element={<FarmerAdvisory />} />
   <Route path="/farmer/weather" element={<Weather />} />
   <Route path="/farmer/satellite-monitoring" element={<SatelliteMonitoring />} />
+  <Route path="/farmer/farmgpt" element={<FarmGPT />} />
+  <Route path="/farmer/farm-manager" element={<FarmManager />} />
+  <Route path="/farmer/crop-calendar" element={<CropCalendar />} />
+  <Route path="/farmer/finance" element={<FarmFinance />} />
+  <Route path="/farmer/community" element={<Community />} />
 
 </Route>
 

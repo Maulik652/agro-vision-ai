@@ -1,0 +1,1505 @@
+{
+  "predict": {
+    "crop-health-risk": {
+      "key": "crop-health-risk",
+      "title": "AI Crop Health Risk Prediction",
+      "result": {
+        "label": "Crop Health Risk",
+        "value": "Low (8.8 / 100)"
+      },
+      "confidence": 89.8,
+      "confidenceBand": "High",
+      "recommendation": "Maintain current crop care routine with weekly monitoring",
+      "explanation": "Temperature 30.5 C, humidity 72.0%, soil moisture 68.0%, and rainfall 135.0 mm indicate low stress risk. Dominant stress driver is humidity (17.1/100).",
+      "chart": {
+        "type": "line",
+        "xKey": "label",
+        "yKey": "value",
+        "data": [
+          {
+            "label": "D1",
+            "value": 8.1
+          },
+          {
+            "label": "D2",
+            "value": 8.62
+          },
+          {
+            "label": "D3",
+            "value": 8.8
+          },
+          {
+            "label": "D4",
+            "value": 9.15
+          },
+          {
+            "label": "D5",
+            "value": 8.89
+          }
+        ]
+      },
+      "metrics": [
+        {
+          "label": "Risk Index",
+          "value": "8.8 / 100"
+        },
+        {
+          "label": "Agro Score",
+          "value": "86.6 / 100"
+        },
+        {
+          "label": "Dominant Stress",
+          "value": "Humidity (17.1)"
+        }
+      ],
+      "model": {
+        "name": "CropHealth Stress Index",
+        "family": "Deterministic Agronomy Model",
+        "version": "1.0"
+      }
+    },
+    "yield": {
+      "key": "yield",
+      "title": "AI Crop Yield Prediction",
+      "result": {
+        "label": "Expected Yield",
+        "value": "7.08 tons per hectare"
+      },
+      "confidence": 84.6,
+      "confidenceBand": "High",
+      "recommendation": "Use split NPK feeding and micronutrient foliar spray to improve grain formation by 8-12%.",
+      "explanation": "Yield range for Rice is 3.5-7.8 t/ha. Current agro score 86.6/100 with soil factor 1.0x and irrigation factor 1.04x supports expected yield 7.08 t/ha.",
+      "chart": {
+        "type": "area",
+        "xKey": "label",
+        "yKey": "value",
+        "data": [
+          {
+            "label": "Stage 1",
+            "value": 1.27
+          },
+          {
+            "label": "Stage 2",
+            "value": 2.55
+          },
+          {
+            "label": "Stage 3",
+            "value": 4.11
+          },
+          {
+            "label": "Stage 4",
+            "value": 5.52
+          },
+          {
+            "label": "Stage 5",
+            "value": 6.51
+          },
+          {
+            "label": "Harvest",
+            "value": 7.08
+          }
+        ]
+      },
+      "metrics": [
+        {
+          "label": "Expected Yield",
+          "value": "7.08 t/ha"
+        },
+        {
+          "label": "Yield Range",
+          "value": "3.5-7.8 t/ha"
+        },
+        {
+          "label": "Soil Factor",
+          "value": "1.0x"
+        }
+      ],
+      "model": {
+        "name": "Yield Range Composite",
+        "family": "Deterministic Agronomy Model",
+        "version": "1.0"
+      }
+    },
+    "irrigation": {
+      "key": "irrigation",
+      "title": "AI Smart Irrigation Advisor",
+      "result": {
+        "label": "Next Irrigation",
+        "value": "3 day(s) | 28.3 mm water"
+      },
+      "confidence": 84.2,
+      "confidenceBand": "High",
+      "recommendation": "Maintain targeted drip pulse irrigation to avoid moisture stress",
+      "explanation": "Soil moisture at 68.0% and forecast rainfall trend suggest next irrigation in about 3 day(s).",
+      "chart": {
+        "type": "line",
+        "xKey": "label",
+        "yKey": "value",
+        "data": [
+          {
+            "label": "Today",
+            "value": 71.0
+          },
+          {
+            "label": "Day 1",
+            "value": 69.0
+          },
+          {
+            "label": "Day 2",
+            "value": 66.0
+          },
+          {
+            "label": "Day 3",
+            "value": 64.0
+          },
+          {
+            "label": "Day 4",
+            "value": 61.0
+          }
+        ]
+      },
+      "metrics": [
+        {
+          "label": "Water Needed",
+          "value": "28.3 mm"
+        },
+        {
+          "label": "Soil Moisture",
+          "value": "68.0%"
+        },
+        {
+          "label": "Irrigation Method",
+          "value": "Drip"
+        }
+      ],
+      "model": {
+        "name": "Irrigation-RF Planner",
+        "family": "Random Forest",
+        "version": "1.0"
+      }
+    },
+    "pest": {
+      "key": "pest",
+      "title": "AI Pest Outbreak Prediction",
+      "result": {
+        "label": "Pest Risk",
+        "value": "Low | Likely Pest: Brown Planthopper"
+      },
+      "confidence": 93.5,
+      "confidenceBand": "Very High",
+      "recommendation": "Continue preventive scouting and maintain sticky trap monitoring",
+      "explanation": "Humidity 72.0%, temperature 30.5 C, rainfall 135.0 mm, and soil moisture 68.0% indicate low pest pressure for current crop conditions.",
+      "chart": {
+        "type": "line",
+        "xKey": "label",
+        "yKey": "value",
+        "data": [
+          {
+            "label": "W1",
+            "value": 21.95
+          },
+          {
+            "label": "W2",
+            "value": 23.13
+          },
+          {
+            "label": "W3",
+            "value": 23.6
+          },
+          {
+            "label": "W4",
+            "value": 24.78
+          },
+          {
+            "label": "W5",
+            "value": 23.84
+          }
+        ]
+      },
+      "metrics": [
+        {
+          "label": "Risk Level",
+          "value": "Low"
+        },
+        {
+          "label": "Likely Pest",
+          "value": "Brown Planthopper"
+        },
+        {
+          "label": "Risk Index",
+          "value": "23.6 / 100"
+        }
+      ],
+      "model": {
+        "name": "Pest Pressure Index",
+        "family": "Deterministic Agronomy Model",
+        "version": "1.0"
+      }
+    },
+    "market": {
+      "key": "market",
+      "title": "AI Market Price Prediction",
+      "result": {
+        "label": "Predicted Market Price",
+        "value": "Rs 2874 per quintal"
+      },
+      "confidence": 93.0,
+      "confidenceBand": "Very High",
+      "recommendation": "Plan market sale 2-3 weeks after harvest to improve realization",
+      "explanation": "Seasonality trend and demand forecast indicate expected market price near Rs 2874 per quintal.",
+      "chart": {
+        "type": "line",
+        "xKey": "label",
+        "yKey": "value",
+        "data": [
+          {
+            "label": "W1",
+            "value": 2672.82
+          },
+          {
+            "label": "W2",
+            "value": 2787.78
+          },
+          {
+            "label": "W3",
+            "value": 2874.0
+          },
+          {
+            "label": "W4",
+            "value": 2988.96
+          },
+          {
+            "label": "W5",
+            "value": 3046.44
+          },
+          {
+            "label": "W6",
+            "value": 2931.48
+          }
+        ]
+      },
+      "metrics": [
+        {
+          "label": "Predicted Price",
+          "value": "Rs 2874/q"
+        },
+        {
+          "label": "Best Selling Time",
+          "value": "2-3 weeks after harvest"
+        },
+        {
+          "label": "Seasonality",
+          "value": "x1.01"
+        }
+      ],
+      "model": {
+        "name": "MarketPulse-TSF",
+        "family": "Time Series Forecasting",
+        "version": "1.0"
+      }
+    },
+    "profit": {
+      "key": "profit",
+      "title": "AI Profit Prediction",
+      "result": {
+        "label": "Expected Profit",
+        "value": "Rs 251,472"
+      },
+      "confidence": 71.9,
+      "confidenceBand": "Medium",
+      "recommendation": "Maintain current strategy and plan phased selling for better realization",
+      "explanation": "Projected revenue near Rs 376,239 against cost Rs 124,767 gives estimated profit Rs 251,472. Price volatility factor applied: 8.0%.",
+      "chart": {
+        "type": "bar",
+        "xKey": "label",
+        "yKey": "value",
+        "data": [
+          {
+            "label": "M1",
+            "value": -29846.22
+          },
+          {
+            "label": "M2",
+            "value": -28290.17
+          },
+          {
+            "label": "M3",
+            "value": -25827.6
+          },
+          {
+            "label": "M4",
+            "value": 82772.7
+          },
+          {
+            "label": "M5",
+            "value": 161783.01
+          },
+          {
+            "label": "M6",
+            "value": 251472.26
+          }
+        ]
+      },
+      "metrics": [
+        {
+          "label": "Estimated Revenue",
+          "value": "Rs 376,239"
+        },
+        {
+          "label": "Estimated Cost",
+          "value": "Rs 124,767"
+        },
+        {
+          "label": "Cost Breakdown",
+          "value": "Seed Rs 18,211, Fertilizer Rs 36,422, Labor Rs 46,539, Irrigation Rs 23,593"
+        },
+        {
+          "label": "Net Profit",
+          "value": "Rs 251,472"
+        },
+        {
+          "label": "Best Case Profit",
+          "value": "Rs 297,730"
+        },
+        {
+          "label": "Worst Case Profit",
+          "value": "Rs 187,443"
+        }
+      ],
+      "model": {
+        "name": "Farm Profit Scenario Engine",
+        "family": "Deterministic Agronomy Model",
+        "version": "1.0"
+      }
+    },
+    "crop": {
+      "key": "crop",
+      "title": "AI Best Crop Recommendation",
+      "result": {
+        "label": "Top Recommended Crops",
+        "value": "Rice, Cotton, Tomato"
+      },
+      "confidence": 69.3,
+      "confidenceBand": "Medium",
+      "recommendation": "Top recommendations align with rainfall suitability, soil conditions, and current temperature behavior.",
+      "explanation": "Top crops are ranked by climate fit, rainfall suitability, and soil-adjusted score: Rice, Cotton, Tomato.",
+      "chart": {
+        "type": "bar",
+        "xKey": "label",
+        "yKey": "value",
+        "data": [
+          {
+            "label": "Rice",
+            "value": 86.42
+          },
+          {
+            "label": "Cotton",
+            "value": 60.75
+          },
+          {
+            "label": "Tomato",
+            "value": 59.05
+          }
+        ]
+      },
+      "metrics": [
+        {
+          "label": "1st Choice",
+          "value": "Rice (86.4)"
+        },
+        {
+          "label": "2nd Choice",
+          "value": "Cotton (60.7)"
+        },
+        {
+          "label": "3rd Choice",
+          "value": "Tomato (59.1)"
+        }
+      ],
+      "model": {
+        "name": "Crop Suitability Ranker",
+        "family": "Deterministic Agronomy Model",
+        "version": "1.0"
+      }
+    },
+    "weather": {
+      "key": "weather",
+      "title": "AI Weather Risk Prediction",
+      "result": {
+        "label": "Weather Risk Score",
+        "value": "Low (7.0 / 100)"
+      },
+      "confidence": 90.6,
+      "confidenceBand": "Very High",
+      "recommendation": "Keep current weather watch and maintain normal field schedule",
+      "explanation": "Heat stress 3.8, rainfall risk 2.8, and humidity disease risk 14.4 combine to a low weather risk profile. Key threat(s): No severe immediate threats.",
+      "chart": {
+        "type": "area",
+        "xKey": "label",
+        "yKey": "value",
+        "data": [
+          {
+            "label": "D1",
+            "value": 4.17
+          },
+          {
+            "label": "D2",
+            "value": 7.55
+          },
+          {
+            "label": "D3",
+            "value": 10.8
+          },
+          {
+            "label": "D4",
+            "value": 9.55
+          },
+          {
+            "label": "D5",
+            "value": 5.05
+          },
+          {
+            "label": "D6",
+            "value": 3.15
+          },
+          {
+            "label": "D7",
+            "value": 6.27
+          }
+        ]
+      },
+      "metrics": [
+        {
+          "label": "Heat Stress",
+          "value": "3.8 / 100"
+        },
+        {
+          "label": "Excess Rainfall Risk",
+          "value": "0.0 / 100"
+        },
+        {
+          "label": "Humidity Disease Risk",
+          "value": "14.4 / 100"
+        }
+      ],
+      "model": {
+        "name": "Weather Stress Composite",
+        "family": "Deterministic Agronomy Model",
+        "version": "1.0"
+      }
+    },
+    "farm-health": {
+      "key": "farm-health",
+      "title": "AI Farm Health Score",
+      "result": {
+        "label": "Farm Health Score",
+        "value": "91.0 / 100"
+      },
+      "confidence": 88.8,
+      "confidenceBand": "High",
+      "recommendation": "Maintain preventive agronomy schedule and recheck moisture every 3 days",
+      "explanation": "Farm health combines soil condition, crop weather fit, irrigation efficiency, and moisture status to score 91.0/100.",
+      "chart": {
+        "type": "bar",
+        "xKey": "label",
+        "yKey": "value",
+        "data": [
+          {
+            "label": "Soil Condition",
+            "value": 100.0
+          },
+          {
+            "label": "Irrigation",
+            "value": 100.0
+          },
+          {
+            "label": "Weather Fit",
+            "value": 87.95
+          },
+          {
+            "label": "Soil Moisture",
+            "value": 78.32
+          }
+        ]
+      },
+      "metrics": [
+        {
+          "label": "Soil",
+          "value": "100.0"
+        },
+        {
+          "label": "Weather",
+          "value": "88.0"
+        },
+        {
+          "label": "Moisture",
+          "value": "78.3"
+        }
+      ],
+      "model": {
+        "name": "FarmVitality Composite Engine",
+        "family": "Hybrid Scoring",
+        "version": "1.0"
+      }
+    },
+    "climate-risk": {
+      "key": "climate-risk",
+      "title": "AI Climate Risk Engine",
+      "result": {
+        "label": "Climate Risk",
+        "value": "Low (16.5 / 100)"
+      },
+      "confidence": 80.3,
+      "confidenceBand": "High",
+      "recommendation": "Continue regular resilience practices and monitor weekly climate updates",
+      "explanation": "Climate engine assessed drought (5.0), heavy rainfall (5.0), and heat stress (36.7) to estimate overall low risk.",
+      "chart": {
+        "type": "bar",
+        "xKey": "label",
+        "yKey": "value",
+        "data": [
+          {
+            "label": "Drought",
+            "value": 5.0
+          },
+          {
+            "label": "Heavy Rain",
+            "value": 5.0
+          },
+          {
+            "label": "Heat Stress",
+            "value": 36.7
+          },
+          {
+            "label": "Overall",
+            "value": 16.51
+          }
+        ]
+      },
+      "metrics": [
+        {
+          "label": "Drought Risk",
+          "value": "5.0"
+        },
+        {
+          "label": "Rainfall Risk",
+          "value": "5.0"
+        },
+        {
+          "label": "Heat Stress",
+          "value": "36.7"
+        }
+      ],
+      "model": {
+        "name": "ClimateShield Multi-Risk",
+        "family": "Gradient Boosting",
+        "version": "1.0"
+      }
+    }
+  },
+  "scan": {
+    "crop": {
+      "module": "crop",
+      "title": "Crop Classification",
+      "crop": {
+        "name": "Rice",
+        "confidence": 61.5,
+        "family": "Field Crop",
+        "selectedCrop": "Rice",
+        "usedProfile": "Rice",
+        "isSelectedCropMatch": true,
+        "alternatives": [
+          {
+            "key": "rice",
+            "name": "Rice",
+            "score": 74.7
+          },
+          {
+            "key": "wheat",
+            "name": "Wheat",
+            "score": 70.4
+          },
+          {
+            "key": "maize",
+            "name": "Maize",
+            "score": 69.0
+          }
+        ]
+      },
+      "reliability": {
+        "agreement": "low",
+        "inferenceConfidence": 62.2,
+        "note": "Image crop inference confidence was low; model used selected crop profile."
+      },
+      "pipeline": {
+        "preprocessing": {
+          "mimeType": "image/jpeg",
+          "originalShape": [
+            128,
+            128,
+            3
+          ],
+          "resizedShape": [
+            224,
+            224,
+            3
+          ],
+          "tensorShape": [
+            1,
+            3,
+            224,
+            224
+          ],
+          "normalized": true,
+          "denoised": true,
+          "edgeDetected": true,
+          "pixelSignal": 68.31,
+          "qualityFactor": 0.566,
+          "imageQuality": 56.6,
+          "featureClarity": 63.7,
+          "brightness": 91.7,
+          "contrast": 10.2,
+          "edgeDensity": 0.1771
+        },
+        "features": {
+          "cropKey": "rice",
+          "texture": 28.05,
+          "colorVariance": 19.48,
+          "spotPattern": 0.0,
+          "edgeComplexity": 45.51,
+          "moistureSignature": 99.0,
+          "featureClarity": 63.7,
+          "greenLeafRatio": 1.0,
+          "lesionAreaRatio": 0.0,
+          "spotClusterScore": 0.0,
+          "edgeDamageRatio": 0.0,
+          "leafHoleRatio": 0.0,
+          "chewingDamageScore": 2.73,
+          "yellowAreaRatio": 0.0,
+          "purpleTintRatio": 0.0,
+          "edgeBurnRatio": 0.0,
+          "edgeIrregularity": 0.2732,
+          "colorHistogram": {
+            "r": [
+              0.0001,
+              0.1621,
+              0.7696,
+              0.0681,
+              0.0001,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "g": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0045,
+              0.0796,
+              0.3423
+            ],
+            "b": [
+              0.0,
+              0.1705,
+              0.7869,
+              0.0425,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          }
+        },
+        "inference": {
+          "module": "crop",
+          "rawScore": 80.3,
+          "featureClarity": 63.7,
+          "signals": {
+            "lesion": 0.0,
+            "edgeDamage": 0.0,
+            "chewing": 2.73,
+            "yellowing": 0.0,
+            "purpleTint": 0.0,
+            "greenLeaf": 100.0
+          }
+        }
+      }
+    },
+    "disease": {
+      "module": "disease",
+      "title": "Crop Disease Detection",
+      "disease": {
+        "name": "Healthy Leaf",
+        "severity": "Low",
+        "confidence": 62.0,
+        "recommendation": "No major disease signature detected. Continue preventive monitoring and re-scan in 5-7 days.",
+        "explanation": "Detected lesion ratio 0.0%, spot clustering 0.0, and weather risk 0.0 indicate low disease pressure. CNN model was unavailable; feature-based diagnostic fallback was used. Crop signal from image is weak, so this result has lower reliability."
+      },
+      "sourceCrop": {
+        "selected": "Rice",
+        "inferred": "Rice",
+        "used": "Rice",
+        "isPayloadMatch": true
+      },
+      "reliability": {
+        "level": "Low",
+        "inferenceConfidence": 62.2,
+        "agreement": "low"
+      },
+      "chart": {
+        "type": "line",
+        "xKey": "label",
+        "yKey": "value",
+        "data": [
+          {
+            "label": "S1",
+            "value": 8.22
+          },
+          {
+            "label": "S2",
+            "value": 11.35
+          },
+          {
+            "label": "S3",
+            "value": 14.48
+          },
+          {
+            "label": "S4",
+            "value": 16.83
+          },
+          {
+            "label": "S5",
+            "value": 18.4
+          },
+          {
+            "label": "Now",
+            "value": 19.57
+          }
+        ]
+      },
+      "pipeline": {
+        "preprocessing": {
+          "mimeType": "image/jpeg",
+          "originalShape": [
+            128,
+            128,
+            3
+          ],
+          "resizedShape": [
+            224,
+            224,
+            3
+          ],
+          "tensorShape": [
+            1,
+            3,
+            224,
+            224
+          ],
+          "normalized": true,
+          "denoised": true,
+          "edgeDetected": true,
+          "pixelSignal": 68.31,
+          "qualityFactor": 0.566,
+          "imageQuality": 56.6,
+          "featureClarity": 63.7,
+          "brightness": 91.7,
+          "contrast": 10.2,
+          "edgeDensity": 0.1771
+        },
+        "features": {
+          "cropKey": "rice",
+          "texture": 28.05,
+          "colorVariance": 19.48,
+          "spotPattern": 0.0,
+          "edgeComplexity": 45.51,
+          "moistureSignature": 99.0,
+          "featureClarity": 63.7,
+          "greenLeafRatio": 1.0,
+          "lesionAreaRatio": 0.0,
+          "spotClusterScore": 0.0,
+          "edgeDamageRatio": 0.0,
+          "leafHoleRatio": 0.0,
+          "chewingDamageScore": 2.73,
+          "yellowAreaRatio": 0.0,
+          "purpleTintRatio": 0.0,
+          "edgeBurnRatio": 0.0,
+          "edgeIrregularity": 0.2732,
+          "colorHistogram": {
+            "r": [
+              0.0001,
+              0.1621,
+              0.7696,
+              0.0681,
+              0.0001,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "g": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0045,
+              0.0796,
+              0.3423
+            ],
+            "b": [
+              0.0,
+              0.1705,
+              0.7869,
+              0.0425,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          }
+        },
+        "inference": {
+          "module": "disease",
+          "rawScore": 18.0,
+          "featureClarity": 63.7,
+          "signals": {
+            "lesion": 0.0,
+            "edgeDamage": 0.0,
+            "chewing": 2.73,
+            "yellowing": 0.0,
+            "purpleTint": 0.0,
+            "greenLeaf": 100.0
+          },
+          "cnnEngine": "feature-rules",
+          "cnnModelLoaded": false,
+          "weatherRisk": 0.0
+        }
+      }
+    },
+    "pest": {
+      "module": "pest",
+      "title": "Pest Damage Detection",
+      "pest": {
+        "name": "Brown Planthopper",
+        "damageLevel": "Low",
+        "riskLevel": "Low",
+        "confidence": 76.9,
+        "recommendation": "Continue preventive scouting and maintain sticky trap monitoring.",
+        "explanation": "Leaf holes 0.0%, chewing damage 2.7, edge damage 0.0, and weather risk 0.0 indicate low pest pressure."
+      },
+      "sourceCrop": {
+        "selected": "Rice",
+        "inferred": "Rice",
+        "used": "Rice",
+        "isPayloadMatch": true
+      },
+      "reliability": {
+        "level": "Medium",
+        "inferenceConfidence": 62.2,
+        "agreement": "low"
+      },
+      "chart": {
+        "type": "bar",
+        "xKey": "label",
+        "yKey": "value",
+        "data": [
+          {
+            "label": "Scout",
+            "value": 6.58
+          },
+          {
+            "label": "Field",
+            "value": 8.7
+          },
+          {
+            "label": "Current",
+            "value": 10.61
+          },
+          {
+            "label": "Projected",
+            "value": 11.46
+          }
+        ]
+      },
+      "pipeline": {
+        "preprocessing": {
+          "mimeType": "image/jpeg",
+          "originalShape": [
+            128,
+            128,
+            3
+          ],
+          "resizedShape": [
+            224,
+            224,
+            3
+          ],
+          "tensorShape": [
+            1,
+            3,
+            224,
+            224
+          ],
+          "normalized": true,
+          "denoised": true,
+          "edgeDetected": true,
+          "pixelSignal": 68.31,
+          "qualityFactor": 0.566,
+          "imageQuality": 56.6,
+          "featureClarity": 63.7,
+          "brightness": 91.7,
+          "contrast": 10.2,
+          "edgeDensity": 0.1771
+        },
+        "features": {
+          "cropKey": "rice",
+          "texture": 28.05,
+          "colorVariance": 19.48,
+          "spotPattern": 0.0,
+          "edgeComplexity": 45.51,
+          "moistureSignature": 99.0,
+          "featureClarity": 63.7,
+          "greenLeafRatio": 1.0,
+          "lesionAreaRatio": 0.0,
+          "spotClusterScore": 0.0,
+          "edgeDamageRatio": 0.0,
+          "leafHoleRatio": 0.0,
+          "chewingDamageScore": 2.73,
+          "yellowAreaRatio": 0.0,
+          "purpleTintRatio": 0.0,
+          "edgeBurnRatio": 0.0,
+          "edgeIrregularity": 0.2732,
+          "colorHistogram": {
+            "r": [
+              0.0001,
+              0.1621,
+              0.7696,
+              0.0681,
+              0.0001,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "g": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0045,
+              0.0796,
+              0.3423
+            ],
+            "b": [
+              0.0,
+              0.1705,
+              0.7869,
+              0.0425,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          }
+        },
+        "inference": {
+          "module": "pest",
+          "rawScore": 18.06,
+          "featureClarity": 63.7,
+          "signals": {
+            "lesion": 0.0,
+            "edgeDamage": 0.0,
+            "chewing": 2.73,
+            "yellowing": 0.0,
+            "purpleTint": 0.0,
+            "greenLeaf": 100.0
+          },
+          "weatherRisk": 0.0,
+          "riskIndex": 13.4
+        }
+      }
+    },
+    "nutrient": {
+      "module": "nutrient",
+      "title": "Nutrient Deficiency Detection",
+      "nutrient": {
+        "name": "Zinc Deficiency",
+        "severity": "Low",
+        "confidence": 70.2,
+        "recommendation": "Apply zinc sulfate spray within 5 days.",
+        "explanation": "Yellow area 0.0%, purple tint 0.0%, and edge burn 0.0% indicate low nutrient stress."
+      },
+      "sourceCrop": {
+        "selected": "Rice",
+        "inferred": "Rice",
+        "used": "Rice",
+        "isPayloadMatch": true
+      },
+      "reliability": {
+        "level": "Low",
+        "inferenceConfidence": 62.2,
+        "agreement": "low"
+      },
+      "chart": {
+        "type": "area",
+        "xKey": "label",
+        "yKey": "value",
+        "data": [
+          {
+            "label": "Base",
+            "value": 5.0
+          },
+          {
+            "label": "Current",
+            "value": 5.0
+          },
+          {
+            "label": "After 3 Days",
+            "value": 5.0
+          },
+          {
+            "label": "After 7 Days",
+            "value": 5.0
+          }
+        ]
+      },
+      "pipeline": {
+        "preprocessing": {
+          "mimeType": "image/jpeg",
+          "originalShape": [
+            128,
+            128,
+            3
+          ],
+          "resizedShape": [
+            224,
+            224,
+            3
+          ],
+          "tensorShape": [
+            1,
+            3,
+            224,
+            224
+          ],
+          "normalized": true,
+          "denoised": true,
+          "edgeDetected": true,
+          "pixelSignal": 68.31,
+          "qualityFactor": 0.566,
+          "imageQuality": 56.6,
+          "featureClarity": 63.7,
+          "brightness": 91.7,
+          "contrast": 10.2,
+          "edgeDensity": 0.1771
+        },
+        "features": {
+          "cropKey": "rice",
+          "texture": 28.05,
+          "colorVariance": 19.48,
+          "spotPattern": 0.0,
+          "edgeComplexity": 45.51,
+          "moistureSignature": 99.0,
+          "featureClarity": 63.7,
+          "greenLeafRatio": 1.0,
+          "lesionAreaRatio": 0.0,
+          "spotClusterScore": 0.0,
+          "edgeDamageRatio": 0.0,
+          "leafHoleRatio": 0.0,
+          "chewingDamageScore": 2.73,
+          "yellowAreaRatio": 0.0,
+          "purpleTintRatio": 0.0,
+          "edgeBurnRatio": 0.0,
+          "edgeIrregularity": 0.2732,
+          "colorHistogram": {
+            "r": [
+              0.0001,
+              0.1621,
+              0.7696,
+              0.0681,
+              0.0001,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "g": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0045,
+              0.0796,
+              0.3423
+            ],
+            "b": [
+              0.0,
+              0.1705,
+              0.7869,
+              0.0425,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          }
+        },
+        "inference": {
+          "module": "nutrient",
+          "rawScore": 16.0,
+          "featureClarity": 63.7,
+          "signals": {
+            "lesion": 0.0,
+            "edgeDamage": 0.0,
+            "chewing": 2.73,
+            "yellowing": 0.0,
+            "purpleTint": 0.0,
+            "greenLeaf": 100.0
+          },
+          "weatherRisk": 0.0,
+          "deficiencyScore": 0.0
+        }
+      }
+    },
+    "health-score": {
+      "module": "health-score",
+      "title": "AI Crop Health Analysis",
+      "health": {
+        "score": 88.0,
+        "label": "Healthy",
+        "indicators": {
+          "leafCondition": 99,
+          "pestPresence": 72,
+          "diseaseSeverity": 72,
+          "nutrientBalance": 72
+        },
+        "confidence": 76.6,
+        "dataQuality": "Medium"
+      },
+      "quality": {
+        "cropMatchRatio": 1.0,
+        "moduleConfidence": 69.7,
+        "flag": "Medium"
+      },
+      "pipeline": {
+        "preprocessing": {
+          "mimeType": "image/jpeg",
+          "originalShape": [
+            128,
+            128,
+            3
+          ],
+          "resizedShape": [
+            224,
+            224,
+            3
+          ],
+          "tensorShape": [
+            1,
+            3,
+            224,
+            224
+          ],
+          "normalized": true,
+          "denoised": true,
+          "edgeDetected": true,
+          "pixelSignal": 68.31,
+          "qualityFactor": 0.566,
+          "imageQuality": 56.6,
+          "featureClarity": 63.7,
+          "brightness": 91.7,
+          "contrast": 10.2,
+          "edgeDensity": 0.1771
+        },
+        "features": {
+          "cropKey": "rice",
+          "texture": 28.05,
+          "colorVariance": 19.48,
+          "spotPattern": 0.0,
+          "edgeComplexity": 45.51,
+          "moistureSignature": 99.0,
+          "featureClarity": 63.7,
+          "greenLeafRatio": 1.0,
+          "lesionAreaRatio": 0.0,
+          "spotClusterScore": 0.0,
+          "edgeDamageRatio": 0.0,
+          "leafHoleRatio": 0.0,
+          "chewingDamageScore": 2.73,
+          "yellowAreaRatio": 0.0,
+          "purpleTintRatio": 0.0,
+          "edgeBurnRatio": 0.0,
+          "edgeIrregularity": 0.2732,
+          "colorHistogram": {
+            "r": [
+              0.0001,
+              0.1621,
+              0.7696,
+              0.0681,
+              0.0001,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "g": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0045,
+              0.0796,
+              0.3423
+            ],
+            "b": [
+              0.0,
+              0.1705,
+              0.7869,
+              0.0425,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          }
+        },
+        "inference": {
+          "module": "health-score",
+          "rawScore": 99.34,
+          "featureClarity": 63.7,
+          "signals": {
+            "lesion": 0.0,
+            "edgeDamage": 0.0,
+            "chewing": 2.73,
+            "yellowing": 0.0,
+            "purpleTint": 0.0,
+            "greenLeaf": 100.0
+          },
+          "weatherRisk": 0.0,
+          "stressIndex": 21.3,
+          "ensembleConfidence": 76.6
+        }
+      }
+    },
+    "treatment": {
+      "module": "treatment",
+      "title": "AI Treatment Recommendations",
+      "actions": [
+        {
+          "treatment": "Disease Control for Healthy Leaf",
+          "timing": "Within 3 days",
+          "prevention": "Remove infected leaves, improve airflow, and follow crop-safe fungicide rotation.",
+          "reason": "Healthy Leaf"
+        },
+        {
+          "treatment": "Pest Management for Brown Planthopper",
+          "timing": "Within 2 days",
+          "prevention": "Scout hotspots, deploy traps, and use targeted bio-control or pesticide as required.",
+          "reason": "Brown Planthopper"
+        },
+        {
+          "treatment": "Nutrient Correction for Zinc Deficiency",
+          "timing": "Within 2 days",
+          "prevention": "Apply nutrient in split doses and maintain uniform moisture for uptake.",
+          "reason": "Zinc Deficiency"
+        }
+      ],
+      "insights": {
+        "spreadRisk": "Medium",
+        "recoveryChance": "High",
+        "preventiveCare": "Monitor field every 48 hours and repeat scan after treatment cycle."
+      },
+      "futureRisk": {
+        "title": "AI Future Crop Risk",
+        "diseaseSpreadRisk": "Low",
+        "pestSpreadRisk": "Medium",
+        "weatherRiskImpact": "Low",
+        "scores": {
+          "diseaseSpread": 33.2,
+          "pestSpread": 39.6,
+          "weatherImpact": 8.0
+        },
+        "forecast": {
+          "title": "Next 7 Days Risk Forecast",
+          "type": "line",
+          "xKey": "label",
+          "yKey": "value",
+          "data": [
+            {
+              "label": "Day 1",
+              "value": 19.58
+            },
+            {
+              "label": "Day 2",
+              "value": 25.58
+            },
+            {
+              "label": "Day 3",
+              "value": 31.58
+            },
+            {
+              "label": "Day 4",
+              "value": 27.08
+            },
+            {
+              "label": "Day 5",
+              "value": 23.08
+            },
+            {
+              "label": "Day 6",
+              "value": 21.58
+            },
+            {
+              "label": "Day 7",
+              "value": 20.08
+            }
+          ]
+        },
+        "farmerBenefit": "Predict disease before it spreads across the field."
+      },
+      "satelliteInsight": {
+        "title": "Satellite Crop Health Index",
+        "ndviScore": 0.92,
+        "vegetationStrength": "Healthy",
+        "soilMoistureTrend": "Increasing",
+        "source": "estimated"
+      },
+      "weatherImpact": {
+        "title": "Weather Impact on Crop",
+        "rainfallRisk": "Low",
+        "humidityImpact": "Low",
+        "temperatureStress": "Low",
+        "scores": {
+          "rainfallRisk": 0.0,
+          "humidityImpact": 0.0,
+          "temperatureStress": 0.0
+        },
+        "forecast": {
+          "title": "7 Day Weather Impact Chart",
+          "type": "area",
+          "xKey": "label",
+          "yKey": "value",
+          "data": [
+            {
+              "label": "Day 1",
+              "value": 0.0
+            },
+            {
+              "label": "Day 2",
+              "value": 0.81
+            },
+            {
+              "label": "Day 3",
+              "value": 1.6
+            },
+            {
+              "label": "Day 4",
+              "value": 0.0
+            },
+            {
+              "label": "Day 5",
+              "value": 0.0
+            },
+            {
+              "label": "Day 6",
+              "value": 0.0
+            },
+            {
+              "label": "Day 7",
+              "value": 1.58
+            }
+          ]
+        }
+      },
+      "confidenceBreakdown": {
+        "cnnModelConfidence": 62.0,
+        "pestModelConfidence": 76.9,
+        "nutrientModelConfidence": 70.2,
+        "healthModelConfidence": 76.6,
+        "finalAiConfidence": 68.3
+      },
+      "recoveryTimeline": {
+        "title": "Estimated Recovery Timeline",
+        "milestones": [
+          {
+            "day": "Day 1",
+            "event": "Treatment Applied"
+          },
+          {
+            "day": "Day 3",
+            "event": "Pressure Re-check"
+          },
+          {
+            "day": "Day 7",
+            "event": "Leaf Recovery"
+          },
+          {
+            "day": "Day 14",
+            "event": "Stable Growth"
+          }
+        ]
+      },
+      "locationAlert": {
+        "title": "Nearby Crop Disease Alert",
+        "message": "Rice Healthy Leaf trend is stable in recent scans.",
+        "location": "Unknown City, Unknown Region",
+        "riskLevel": "Low"
+      },
+      "scanHistorySeed": {
+        "title": "Historical Scan Tracking",
+        "lastIssue": "Healthy Leaf",
+        "crop": "Rice",
+        "trend": "stable"
+      },
+      "smartTip": {
+        "title": "AI Smart Farming Tip",
+        "message": "Rice shows Healthy Leaf and Brown Planthopper pressure. Weather risk is low; keep irrigation moderate and monitor the same leaf zone every 48 hours."
+      },
+      "modelPerformance": {
+        "title": "AI Model Performance",
+        "diseaseDetectionAccuracy": 65,
+        "pestDetectionAccuracy": 78.0,
+        "nutrientDetectionAccuracy": 71.2,
+        "chart": {
+          "type": "bar",
+          "xKey": "label",
+          "yKey": "value",
+          "data": [
+            {
+              "label": "Disease",
+              "value": 65
+            },
+            {
+              "label": "Pest",
+              "value": 78.0
+            },
+            {
+              "label": "Nutrient",
+              "value": 71.2
+            }
+          ]
+        }
+      },
+      "farmHealthStatus": {
+        "label": "Good",
+        "band": "75-90",
+        "score": 88.0
+      },
+      "quality": {
+        "flag": "Low",
+        "confidence": 68.3,
+        "cropMatchRatio": 1.0
+      },
+      "recommendationEngine": {
+        "title": "AI Smart Recommendations Engine",
+        "summary": "No historical scan trend available yet."
+      },
+      "pipeline": {
+        "preprocessing": "open-cv-and-cnn-ready",
+        "features": "cv-signals-weather-ndvi-history",
+        "inference": "ensemble-deterministic-optimizer"
+      }
+    }
+  }
+}
