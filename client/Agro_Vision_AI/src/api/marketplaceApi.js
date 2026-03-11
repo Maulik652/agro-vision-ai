@@ -45,6 +45,11 @@ export const getAIDemandPrediction = async (payload) => {
   return response.data;
 };
 
+export const getAISellAssistant = async (payload) => {
+  const response = await api.post("/ai/sell-assistant", payload);
+  return response.data;
+};
+
 export const getAIQualityCheck = async (payload) => {
   const response = await api.post("/ai/quality", payload);
   return response.data;
@@ -57,5 +62,130 @@ export const getAILogisticsEstimate = async (payload) => {
 
 export const getFarmerEarningsDashboard = async () => {
   const response = await api.get("/crops/earnings/dashboard");
+  return response.data;
+};
+
+export const getFarmerMarketIntelligence = async (params = {}) => {
+  const response = await api.get("/crops/farmer/intelligence", { params });
+  return response.data;
+};
+
+/* ─── Market Intelligence APIs ────────────────────────────────────── */
+
+export const getMarketIntelPrices = async (crop) => {
+  const response = await api.get("/market/intel/prices", { params: { crop } });
+  return response.data;
+};
+
+export const getMarketIntelTrends = async (crop, days = 30) => {
+  const response = await api.get("/market/intel/trends", { params: { crop, days } });
+  return response.data;
+};
+
+export const getMarketIntelPredict = async (crop) => {
+  const response = await api.get("/market/intel/predict", { params: { crop } });
+  return response.data;
+};
+
+export const getMarketIntelInsights = async (crop) => {
+  const response = await api.get("/market/intel/insights", { params: { crop } });
+  return response.data;
+};
+
+export const getMarketIntelProfitability = async (crop) => {
+  const response = await api.get("/market/intel/profitability", { params: { crop } });
+  return response.data;
+};
+
+export const getMarketIntelNearby = async (crop, market) => {
+  const response = await api.get("/market/intel/nearby", { params: { crop, market } });
+  return response.data;
+};
+
+export const getMarketIntelHeatmap = async (crop) => {
+  const response = await api.get("/market/intel/heatmap", { params: { crop } });
+  return response.data;
+};
+
+/* ─── Sell Crop: Farmer Listing Management ────────────────────────── */
+
+export const getMyListings = async () => {
+  const response = await api.get("/crops/my-listings");
+  return response.data;
+};
+
+export const updateCropListing = async (id, payload) => {
+  const response = await api.put(`/crops/${id}`, payload);
+  return response.data;
+};
+
+export const deleteCropListing = async (id) => {
+  const response = await api.delete(`/crops/${id}`);
+  return response.data;
+};
+
+export const pauseCropListing = async (id) => {
+  const response = await api.patch(`/crops/${id}/pause`);
+  return response.data;
+};
+
+/* ─── Sell Crop: Offers ───────────────────────────────────────────── */
+
+export const getFarmerOffers = async () => {
+  const response = await api.get("/crops/offers");
+  return response.data;
+};
+
+export const getListingOffers = async (id) => {
+  const response = await api.get(`/crops/${id}/offers`);
+  return response.data;
+};
+
+export const submitBuyerOffer = async (payload) => {
+  const response = await api.post("/crops/offers", payload);
+  return response.data;
+};
+
+export const respondToOffer = async (offerId, payload) => {
+  const response = await api.patch(`/crops/offers/${offerId}/respond`, payload);
+  return response.data;
+};
+
+/* ─── Sell Crop: Orders ───────────────────────────────────────────── */
+
+export const getFarmerOrders = async () => {
+  const response = await api.get("/crops/orders");
+  return response.data;
+};
+
+export const createOrderFromOffer = async (offerId) => {
+  const response = await api.post("/crops/orders", { offerId });
+  return response.data;
+};
+
+export const updateOrderStatus = async (orderId, status) => {
+  const response = await api.patch(`/crops/orders/${orderId}`, { status });
+  return response.data;
+};
+
+/* ─── Sell Crop: Analytics & Discovery ────────────────────────────── */
+
+export const getSalesAnalytics = async () => {
+  const response = await api.get("/crops/sales/analytics");
+  return response.data;
+};
+
+export const discoverBuyers = async (crop, location) => {
+  const response = await api.get("/crops/discover-buyers", { params: { crop, location } });
+  return response.data;
+};
+
+export const getHarvestInsights = async (crop) => {
+  const response = await api.get("/crops/harvest-insights", { params: { crop } });
+  return response.data;
+};
+
+export const getDemandIndicators = async () => {
+  const response = await api.get("/crops/demand-indicators");
   return response.data;
 };

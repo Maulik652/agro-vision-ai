@@ -278,6 +278,107 @@ def estimate_logistics(payload: Dict) -> Dict:
     }
 
 
+def build_sell_assistant(payload: Dict) -> Dict:
+    crop = normalize_crop(payload.get("crop") or payload.get("cropName"))
+    location = normalize_location(payload.get("location"))
+    quantity = max(1.0, safe_float(payload.get("quantity"), 100.0))
+    shelf_life_days = clamp(safe_float(payload.get("shelfLifeDays"), 7.0), 1.0, 45.0)
+    moisture_percent = clamp(safe_float(payload.get("moisturePercent"), 12.0), 0.0, 100.0)
+    grade = str(payload.get("grade") or payload.get("qualityGrade") or "B").strip().upper() or "B"
+    quality_type = str(payload.get("qualityType") or "normal").strip().lower() or "normal"
+    packaging_type = str(payload.get("packagingType") or "standard-bag").strip().lower() or "standard-bag"
+
+    price_suggestion = suggest_price(payload)
+    demand_prediction = predict_demand(payload)
+
+    grade_factor_map = {
+        "A": 1.07,
+        "B": 1.0,
+        "C": 0.93,
+    }
+    packaging_factor_map = {
+        "crate": 1.03,
+        "cold-box": 1.06,
+        "jute-bag": 1.01,
+        "standard-bag": 1.0,
+    }
+
+    grade_factor = grade_factor_map.get(grade, 0.98)
+    organic_factor = 1.05 if quality_type == "organic" else 1.0
+    packaging_factor = packaging_factor_map.get(packaging_type, 1.0)
+    moisture_penalty = clamp((moisture_percent - 14.0) * 0.01, 0.0, 0.11) if moisture_percent > 14.0 else 0.0
+    shelf_life_factor = 0.92 if shelf_life_days <= 3.0 else 0.98 if shelf_life_days <= 7.0 else 1.03
+
+    ideal_price = clamp(
+        price_suggestion["suggested_price"] * grade_factor * organic_factor * packaging_factor * shelf_life_factor * (1.0 - moisture_penalty),
+        4.0,
+        360.0,
+    )
+
+    demand_score = safe_float(demand_prediction.get("demand_score"), 56.0)
+    match_rate = clamp(
+        44.0 + (demand_score * 0.42) + (9.0 if grade == "A" else 5.0 if grade == "B" else 2.0) + (7.0 if quality_type == "organic" else 0.0),
+        35.0,
+        96.0,
+    )
+    readiness = clamp(
+        54.0 + (demand_score * 0.22) + (8.0 if shelf_life_days >= 7.0 else 3.0) + (7.0 if quantity >= 500.0 else 2.0) + (8.0 if grade == "A" else 4.0 if grade == "B" else 0.0) - (moisture_penalty * 100.0 * 0.55),
+        32.0,
+        98.0,
+    )
+
+    urgency = "LOW"
+    if shelf_life_days <= 3.0 or demand_score < 42.0:
+        urgency = "HIGH"
+    elif shelf_life_days <= 7.0 or demand_score < 58.0:
+        urgency = "MEDIUM"
+
+    min_price = clamp(ideal_price * 0.94, 4.0, 340.0)
+    max_price = clamp(ideal_price * 1.07, 5.0, 380.0)
+
+    risk_flags = []
+    if shelf_life_days <= 3.0:
+        risk_flags.append("Short shelf-life: prioritize nearby buyers and same-day pickup.")
+    if moisture_percent > 14.0:
+        risk_flags.append("High moisture can reduce buyer confidence and negotiated price.")
+    if quantity > 1800.0:
+        risk_flags.append("Large lot size: split into tranches to improve conversion speed.")
+
+    recommendations = [
+        f"Start negotiations near Rs {round(max_price, 2)}/kg, close above Rs {round(min_price, 2)}/kg.",
+        "Publish listing with grade, moisture, and packaging details to increase trust.",
+        "Promote instant dispatch and flexible pickup windows." if urgency == "HIGH" else "Run buyer outreach in two waves: early morning and evening mandis.",
+    ]
+
+    return {
+        "crop": crop,
+        "location": location,
+        "demand_level": demand_prediction.get("demand_level", "MEDIUM"),
+        "demand_score": round(demand_score, 1),
+        "readiness_score": round(readiness),
+        "urgency": urgency,
+        "expected_buyer_match_rate": round(match_rate),
+        "recommended_price_band": {
+            "min": round(min_price, 2),
+            "ideal": round(ideal_price, 2),
+            "max": round(max_price, 2),
+            "currency": "INR/kg",
+        },
+        "signals": {
+            "grade": grade,
+            "quality_type": quality_type,
+            "packaging_type": packaging_type,
+            "shelf_life_days": round(shelf_life_days, 1),
+            "moisture_percent": round(moisture_percent, 1),
+            "quantity": round(quantity, 2),
+        },
+        "risk_flags": risk_flags,
+        "recommendations": recommendations,
+        "model": "Farmer Sell Assistant v2",
+        "engine": "python",
+    }
+
+
 def main() -> int:
     try:
         action = str(sys.argv[1]).strip().lower() if len(sys.argv) > 1 else "price"
@@ -291,6 +392,8 @@ def main() -> int:
             result = detect_quality(payload)
         elif action == "logistics":
             result = estimate_logistics(payload)
+        elif action == "sell_assistant":
+            result = build_sell_assistant(payload)
         else:
             raise ValueError(f"Unsupported action: {action}")
 

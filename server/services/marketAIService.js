@@ -342,6 +342,114 @@ const fallbackLogisticsEstimate = (payload = {}) => {
   };
 };
 
+const fallbackSellAssistant = (payload = {}) => {
+  const crop = normalizeCrop(payload.crop || payload.cropName);
+  const location = normalizeLocation(payload.location);
+  const quantity = Math.max(1, toNumber(payload.quantity, 100));
+  const shelfLifeDays = clamp(toNumber(payload.shelfLifeDays, 7), 1, 45);
+  const moisturePercent = clamp(toNumber(payload.moisturePercent, 12), 0, 100);
+  const grade = String(payload.grade || payload.qualityGrade || "B").trim().toUpperCase() || "B";
+  const qualityType = String(payload.qualityType || "normal").trim().toLowerCase();
+  const packagingType = String(payload.packagingType || "standard-bag").trim().toLowerCase();
+
+  const priceSuggestion = fallbackPriceSuggestion(payload);
+  const demandPrediction = fallbackDemandPrediction(payload);
+
+  const gradeFactorMap = {
+    A: 1.07,
+    B: 1,
+    C: 0.93
+  };
+
+  const packagingFactorMap = {
+    "crate": 1.03,
+    "cold-box": 1.06,
+    "jute-bag": 1.01,
+    "standard-bag": 1
+  };
+
+  const gradeFactor = gradeFactorMap[grade] || 0.98;
+  const organicFactor = qualityType === "organic" ? 1.05 : 1;
+  const packagingFactor = packagingFactorMap[packagingType] || 1;
+  const moisturePenalty = moisturePercent > 14 ? clamp((moisturePercent - 14) * 0.01, 0, 0.11) : 0;
+  const shelfLifeFactor = shelfLifeDays <= 3 ? 0.92 : shelfLifeDays <= 7 ? 0.98 : 1.03;
+
+  const idealPrice = clamp(
+    priceSuggestion.suggested_price * gradeFactor * organicFactor * packagingFactor * shelfLifeFactor * (1 - moisturePenalty),
+    4,
+    360
+  );
+
+  const demandScore = toNumber(demandPrediction.demand_score, 56);
+  const matchRate = clamp(
+    44 + (demandScore * 0.42) + (grade === "A" ? 9 : grade === "B" ? 5 : 2) + (qualityType === "organic" ? 7 : 0),
+    35,
+    96
+  );
+
+  const readiness = clamp(
+    54 + (demandScore * 0.22) + (shelfLifeDays >= 7 ? 8 : 3) + (quantity >= 500 ? 7 : 2) + (grade === "A" ? 8 : grade === "B" ? 4 : 0) - (moisturePenalty * 100 * 0.55),
+    32,
+    98
+  );
+
+  const urgency = shelfLifeDays <= 3 || demandScore < 42
+    ? "HIGH"
+    : shelfLifeDays <= 7 || demandScore < 58
+      ? "MEDIUM"
+      : "LOW";
+
+  const minPrice = clamp(idealPrice * 0.94, 4, 340);
+  const maxPrice = clamp(idealPrice * 1.07, 5, 380);
+
+  const riskFlags = [];
+  if (shelfLifeDays <= 3) {
+    riskFlags.push("Short shelf-life: prioritize nearby buyers and same-day pickup.");
+  }
+  if (moisturePercent > 14) {
+    riskFlags.push("High moisture can reduce buyer confidence and negotiated price.");
+  }
+  if (quantity > 1800) {
+    riskFlags.push("Large lot size: split into tranches to improve conversion speed.");
+  }
+
+  const recommendations = [
+    `Start negotiations near Rs ${Number(maxPrice.toFixed(2))}/kg, close above Rs ${Number(minPrice.toFixed(2))}/kg.`,
+    "Publish listing with grade, moisture, and packaging details to increase trust.",
+    urgency === "HIGH"
+      ? "Promote instant dispatch and flexible pickup windows."
+      : "Run buyer outreach in two waves: early morning and evening mandis."
+  ];
+
+  return {
+    crop,
+    location,
+    demand_level: demandPrediction.demand_level,
+    demand_score: Number(demandScore.toFixed(1)),
+    readiness_score: Math.round(readiness),
+    urgency,
+    expected_buyer_match_rate: Math.round(matchRate),
+    recommended_price_band: {
+      min: Number(minPrice.toFixed(2)),
+      ideal: Number(idealPrice.toFixed(2)),
+      max: Number(maxPrice.toFixed(2)),
+      currency: "INR/kg"
+    },
+    signals: {
+      grade,
+      quality_type: qualityType,
+      packaging_type: packagingType,
+      shelf_life_days: shelfLifeDays,
+      moisture_percent: Number(moisturePercent.toFixed(1)),
+      quantity
+    },
+    risk_flags: riskFlags,
+    recommendations,
+    model: "Farmer Sell Assistant v2",
+    engine: "node-fallback"
+  };
+};
+
 const withPythonFallback = async (action, payload, fallbackFn) => {
   try {
     const response = await runPythonAction(action, payload);
@@ -373,4 +481,8 @@ export const detectCropQuality = async (payload = {}) => {
 
 export const estimateLogistics = async (payload = {}) => {
   return withPythonFallback("logistics", payload, fallbackLogisticsEstimate);
+};
+
+export const buildSellAssistant = async (payload = {}) => {
+  return withPythonFallback("sell_assistant", payload, fallbackSellAssistant);
 };

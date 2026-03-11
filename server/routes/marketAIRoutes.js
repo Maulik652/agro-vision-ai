@@ -4,7 +4,8 @@ import {
   aiDemandPrediction,
   aiLogisticsEstimate,
   aiPriceSuggestion,
-  aiQualityCheck
+  aiQualityCheck,
+  aiSellAssistant
 } from "../controllers/marketAIController.js";
 import {
   aiFertilizerRecommendation as aiFertilizerFromPredict,
@@ -24,6 +25,7 @@ router.post("/price",    protect, authorize("farmer", "buyer", "admin"), aiPrice
 router.post("/demand",   protect, authorize("farmer", "buyer", "admin"), aiDemandPrediction);
 router.post("/quality",  protect, authorize("farmer", "buyer", "admin"), aiQualityCheck);
 router.post("/logistics",protect, authorize("farmer", "buyer", "admin"), aiLogisticsEstimate);
+router.post("/sell-assistant",protect, authorize("farmer", "buyer", "admin"), aiSellAssistant);
 
 /* Dashboard AI prediction endpoints */
 router.post("/yield-prediction", protect, authorize("farmer", "admin"), aiYieldFromPredict);

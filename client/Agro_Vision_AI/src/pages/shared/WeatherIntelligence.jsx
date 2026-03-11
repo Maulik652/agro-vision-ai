@@ -1002,7 +1002,7 @@ const WeatherIntelligence = () => {
             }
           >
             <div className="grid gap-4 sm:grid-cols-[0.95fr,1.05fr]">
-              <div className="rounded-2xl border border-[#B9E1FA] bg-gradient-to-br from-[#D8F1FF] via-[#EDF8FF] to-[#E9F7F0] p-4">
+              <div className="rounded-2xl border border-[#B9E1FA] bg-linear-to-br from-[#D8F1FF] via-[#EDF8FF] to-[#E9F7F0] p-4">
                 <div className="flex items-center gap-3">
                   <WeatherGlyph condition={currentWeather.condition} size={48} />
                   <div>
@@ -1312,7 +1312,7 @@ const WeatherIntelligence = () => {
             subtitle="Decision support generated from rainfall, temperature, and humidity"
             icon={Droplets}
           >
-            <div className="rounded-2xl border border-[#B9DFF8] bg-gradient-to-br from-[#E9F8FF] to-[#F2FCF5] p-4">
+            <div className="rounded-2xl border border-[#B9DFF8] bg-linear-to-br from-[#E9F8FF] to-[#F2FCF5] p-4">
               <p className="text-sm font-semibold text-[#226481]">Recommended irrigation level</p>
               <p className="text-3xl font-black text-[#0E4A67]">{irrigationPlan.level}</p>
               <div className="mt-3 grid gap-2 text-sm text-[#2A6078]">
