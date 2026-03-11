@@ -18,8 +18,10 @@ import FarmerDashboard from "./pages/farmer/FarmerDashboard";
 import AIScan from "./pages/farmer/AIScan";
 import Predictions from "./pages/farmer/Predictions";
 import FarmerMarketplace from "./pages/farmer/Marketplace";
+import SellCrop from "./pages/farmer/SellCrop";
 import FarmerAdvisory from "./pages/farmer/Advisory";
 import Weather from "./pages/farmer/Weather";
+import SatelliteMonitoring from "./pages/farmer/SatelliteMonitoring";
 
 /* Buyer Pages */
 import BuyerDashboard from "./pages/buyer/BuyerDashboard";
@@ -32,6 +34,7 @@ import ExpertDashboard from "./pages/expert/ExpertDashboard";
 import ExpertAdvisory from "./pages/expert/Advisory";
 import ExpertReports from "./pages/expert/Reports";
 import ExpertProfile from "./pages/expert/Profile";
+import CropDetail from "./pages/marketplace/CropDetail";
 import { Toaster } from "react-hot-toast";
 
 function App() {
@@ -62,10 +65,16 @@ function App() {
   <Route path="/farmer/scan" element={<AIScan />} />
   <Route path="/farmer/predictions" element={<Predictions />} />
   <Route path="/farmer/marketplace" element={<FarmerMarketplace />} />
+  <Route path="/farmer/sell-crop" element={<SellCrop />} />
   <Route path="/farmer/advisory" element={<FarmerAdvisory />} />
   <Route path="/farmer/weather" element={<Weather />} />
+  <Route path="/farmer/satellite-monitoring" element={<SatelliteMonitoring />} />
 
 </Route>
+
+            <Route element={<ProtectedRoute allowedRoles={["farmer", "buyer"]} />}>
+              <Route path="/marketplace/crop/:id" element={<CropDetail />} />
+            </Route>
 
             {/* ================= BUYER ROUTES ================= */}
             <Route element={<ProtectedRoute allowedRoles={["buyer"]} />}>

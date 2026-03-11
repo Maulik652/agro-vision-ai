@@ -1,0 +1,233 @@
+{
+  "info": {
+    "name": "AgroVision Weather API",
+    "description": "Authenticated weather intelligence endpoints for farmer panel.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000"
+    },
+    {
+      "key": "token",
+      "value": ""
+    },
+    {
+      "key": "location",
+      "value": "Surat"
+    },
+    {
+      "key": "cropType",
+      "value": "Rice"
+    },
+    {
+      "key": "lat",
+      "value": "21.1702"
+    },
+    {
+      "key": "lon",
+      "value": "72.8311"
+    }
+  ],
+  "item": [
+    {
+      "name": "Weather - Current (Manual Location)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/weather/current?location={{location}}&cropType={{cropType}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "weather",
+            "current"
+          ],
+          "query": [
+            {
+              "key": "location",
+              "value": "{{location}}"
+            },
+            {
+              "key": "cropType",
+              "value": "{{cropType}}"
+            }
+          ]
+        },
+        "description": "Returns real-time current weather for a farm location."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200', function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "const body = pm.response.json();",
+              "pm.test('Current payload has temperature', function () {",
+              "  pm.expect(body).to.have.property('temperature');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Weather - Forecast (7 Day)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/weather/forecast?location={{location}}&cropType={{cropType}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "weather",
+            "forecast"
+          ],
+          "query": [
+            {
+              "key": "location",
+              "value": "{{location}}"
+            },
+            {
+              "key": "cropType",
+              "value": "{{cropType}}"
+            }
+          ]
+        },
+        "description": "Returns 7-day forecast cards data for farmer weather dashboard."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200', function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "const body = pm.response.json();",
+              "pm.test('Forecast array exists', function () {",
+              "  pm.expect(body.forecast).to.be.an('array');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Weather - Analysis (AI Advice + Alerts)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/weather/analysis?location={{location}}&cropType={{cropType}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "weather",
+            "analysis"
+          ],
+          "query": [
+            {
+              "key": "location",
+              "value": "{{location}}"
+            },
+            {
+              "key": "cropType",
+              "value": "{{cropType}}"
+            }
+          ]
+        },
+        "description": "Returns AI weather summary, recommendations, risk alerts, risk score, and weather history."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200', function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "const body = pm.response.json();",
+              "pm.test('Analysis includes recommendations', function () {",
+              "  pm.expect(body.recommendations).to.be.an('array');",
+              "});",
+              "pm.test('Analysis includes alerts', function () {",
+              "  pm.expect(body.alerts).to.be.an('array');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Weather - Current (GPS Coordinates)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/weather/current?lat={{lat}}&lon={{lon}}&cropType={{cropType}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "weather",
+            "current"
+          ],
+          "query": [
+            {
+              "key": "lat",
+              "value": "{{lat}}"
+            },
+            {
+              "key": "lon",
+              "value": "{{lon}}"
+            },
+            {
+              "key": "cropType",
+              "value": "{{cropType}}"
+            }
+          ]
+        },
+        "description": "Fetch current weather using GPS coordinates from farmer device."
+      }
+    }
+  ]
+}

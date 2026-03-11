@@ -12,6 +12,18 @@
   --text-secondary: #475569;
 }
 
+body {
+  font-family: "Space Grotesk", sans-serif;
+  color: var(--text-primary);
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: "Bricolage Grotesque", sans-serif;
+}
+
 /* Reusable Input Style */
 .input {
   @apply w-full px-4 py-3 rounded-xl border border-slate-200 

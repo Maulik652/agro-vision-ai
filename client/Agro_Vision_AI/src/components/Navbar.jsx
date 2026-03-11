@@ -1,26 +1,16 @@
-import React, { useState, useEffect } from "react";
-import { NavLink, useNavigate, useLocation } from "react-router-dom";
+import React, { useState } from "react";
+import { NavLink, useNavigate } from "react-router-dom";
 import { Menu, X } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
 const Navbar = () => {
 
   const navigate = useNavigate();
-  const location = useLocation();
   const { user, logout } = useAuth();
 
   const role = user?.role?.toLowerCase() || "guest";
 
   const [menuOpen, setMenuOpen] = useState(false);
-
-
-  /* =========================
-     Close mobile menu on route change
-  ========================= */
-  useEffect(() => {
-    setMenuOpen(false);
-  }, [location.pathname]);
-
 
   /* =========================
      Active Link Style
@@ -51,8 +41,10 @@ const Navbar = () => {
       { name: "AI Scan", path: "/farmer/scan" },
       { name: "Predictions", path: "/farmer/predictions" },
       { name: "Marketplace", path: "/farmer/marketplace" },
+      { name: "Sell Crop", path: "/farmer/sell-crop" },
       { name: "Advisory", path: "/farmer/advisory" },
-      { name: "Weather", path: "/farmer/weather" }
+      { name: "Weather", path: "/farmer/weather" },
+      { name: "Satellite", path: "/farmer/satellite-monitoring" }
     ],
 
     buyer: [
@@ -95,6 +87,7 @@ const Navbar = () => {
   ========================= */
   const handleNavigate = (path) => {
 
+    setMenuOpen(false);
     navigate(path);
 
   };
@@ -125,6 +118,7 @@ const Navbar = () => {
               key={link.name}
               to={link.path}
               className={navLinkStyle}
+              onClick={() => setMenuOpen(false)}
             >
               {link.name}
             </NavLink>

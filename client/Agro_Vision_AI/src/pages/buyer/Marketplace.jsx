@@ -1,11 +1,8 @@
-import React from 'react'
+import React from "react";
+import MarketplaceHub from "../shared/MarketplaceHub";
 
 const Marketplace = () => {
-  return (
-    <div>
-      
-    </div>
-  )
-}
+  return <MarketplaceHub mode="buyer" />;
+};
 
-export default Marketplace
+export default Marketplace;
