@@ -222,11 +222,11 @@ const FarmGPT = () => {
   const isNewChat = messages.length === 0;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#f6f8f4] via-[#eefbf1] to-[#f3f4ef]">
+    <div className="min-h-screen bg-linear-to-br from-[#f6f8f4] via-[#eefbf1] to-[#f3f4ef]">
 
       {/* Header */}
 
-      <div className="bg-gradient-to-r from-[#0d3d22] to-[#1a6336] text-white px-6 py-4 flex items-center gap-4">
+      <div className="bg-linear-to-r from-[#0d3d22] to-[#1a6336] text-white px-6 py-4 flex items-center gap-4">
 
         <button onClick={() => setShowSidebar(!showSidebar)}>
           <History size={18} />
