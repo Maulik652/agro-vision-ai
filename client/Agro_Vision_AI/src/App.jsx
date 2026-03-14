@@ -33,6 +33,11 @@ import BuyerDashboard from "./pages/buyer/BuyerDashboard";
 import BuyerMarketplace from "./pages/buyer/Marketplace";
 import BuyerOrders from "./pages/buyer/Orders";
 import BuyerProfile from "./pages/buyer/Profile";
+import Cart from "./pages/buyer/Cart";
+import Checkout from "./pages/buyer/Checkout";
+import Payment from "./pages/buyer/Payment";
+import Chat from "./pages/buyer/Chat";
+import Wallet from "./pages/buyer/Wallet";
 
 /* Expert Pages */
 import ExpertDashboard from "./pages/expert/ExpertDashboard";
@@ -41,6 +46,7 @@ import ExpertReports from "./pages/expert/Reports";
 import ExpertProfile from "./pages/expert/Profile";
 import CropDetail from "./pages/marketplace/CropDetail";
 import { Toaster } from "react-hot-toast";
+import CropDetails from "./pages/buyer/CropDetails";
 
 function App() {
   return (
@@ -91,7 +97,13 @@ function App() {
 
   <Route path="/buyer/dashboard" element={<BuyerDashboard />} />
   <Route path="/buyer/marketplace" element={<BuyerMarketplace />} />
+  <Route path="/buyer/cropdetails" element={<CropDetails />} />
+  <Route path="/buyer/cart" element={<Cart />} />
+  <Route path="/buyer/checkout" element={<Checkout />} />
+  <Route path="/buyer/payment" element={<Payment />} />
   <Route path="/buyer/orders" element={<BuyerOrders />} />
+  <Route path="/buyer/chat" element={<Chat />} />
+  <Route path="/buyer/wallet" element={<Wallet />} />
   <Route path="/buyer/profile" element={<BuyerProfile />} />
 
 </Route>

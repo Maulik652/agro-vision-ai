@@ -37,6 +37,7 @@ export const farmerUpdateListing = async (req, res) => {
   try {
     const listing = await updateListing(req.params.id, req.user._id, req.body);
     if (!listing) return res.status(404).json({ success: false, message: "Listing not found." });
+
     return res.status(200).json({ success: true, listing });
   } catch (err) {
     return res.status(500).json({ success: false, message: err.message });

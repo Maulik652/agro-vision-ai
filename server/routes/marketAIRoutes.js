@@ -1,5 +1,7 @@
 import express from "express";
 import { authorize, protect } from "../middleware/authMiddleware.js";
+import { createRouteRateLimiter } from "../middleware/rateLimitMiddleware.js";
+import { validateParams } from "../middleware/zodValidate.js";
 import {
   aiDemandPrediction,
   aiLogisticsEstimate,
@@ -18,8 +20,25 @@ import {
   aiScanHistory,
   uploadMiddleware,
 } from "../controllers/cropScanController.js";
+import { getAICropInsightsByCropId } from "../controllers/aiCropInsightsController.js";
+import { aiCropInsightsParamSchema } from "../validation/cropDetailValidation.js";
 
 const router = express.Router();
+
+const limiter = createRouteRateLimiter({
+  windowMs: 60_000,
+  max: 100,
+  message: "Too many AI requests. Please retry shortly."
+});
+
+router.get(
+  "/crop-insights/:cropId",
+  protect,
+  authorize("buyer", "farmer", "admin"),
+  limiter,
+  validateParams(aiCropInsightsParamSchema),
+  getAICropInsightsByCropId
+);
 
 router.post("/price",    protect, authorize("farmer", "buyer", "admin"), aiPriceSuggestion);
 router.post("/demand",   protect, authorize("farmer", "buyer", "admin"), aiDemandPrediction);

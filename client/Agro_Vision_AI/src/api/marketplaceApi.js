@@ -1,5 +1,41 @@
 import api from "./axios";
 
+/*
+ * Marketplace module APIs
+ * - Dedicated REST surface under /api/marketplace for buyer marketplace UI
+ * - Uses server-side filtering, pagination and AI aggregation
+ */
+
+export const fetchMarketplaceCrops = async (params = {}) => {
+  const response = await api.get("/marketplace/crops", { params });
+  return response.data;
+};
+
+export const fetchMarketplaceCropById = async (cropId) => {
+  const response = await api.get(`/marketplace/crops/${cropId}`);
+  return response.data;
+};
+
+export const fetchMarketplaceCategories = async () => {
+  const response = await api.get("/marketplace/categories");
+  return response.data;
+};
+
+export const fetchMarketplaceFarmerById = async (farmerId) => {
+  const response = await api.get(`/marketplace/farmers/${farmerId}`);
+  return response.data;
+};
+
+export const fetchMarketplaceAIInsights = async (crop) => {
+  const response = await api.get("/marketplace/ai-insights", { params: { crop } });
+  return response.data;
+};
+
+export const addMarketplaceItemToCart = async (payload) => {
+  const response = await api.post("/cart/add", payload);
+  return response.data;
+};
+
 export const getMarketplaceListings = async (params = {}) => {
   const response = await api.get("/crops", { params });
   return response.data;

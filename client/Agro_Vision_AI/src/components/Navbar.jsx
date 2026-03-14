@@ -51,6 +51,7 @@ const Navbar = () => {
     buyer: [
       { name: "Dashboard", path: "/buyer/dashboard" },
       { name: "Marketplace", path: "/buyer/marketplace" },
+      { name: "Cropdetails", path: "/buyer/cropdetails" },
       { name: "Orders", path: "/buyer/orders" },
       { name: "Profile", path: "/buyer/profile" }
     ],

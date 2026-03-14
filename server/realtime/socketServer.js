@@ -1,0 +1,376 @@
+import { Server } from "socket.io";
+import jwt from "jsonwebtoken";
+import mongoose from "mongoose";
+import CropListing from "../models/CropListing.js";
+import CropChatMessage from "../models/CropChatMessage.js";
+
+let ioInstance = null;
+const CHAT_HISTORY_LIMIT = 40;
+
+const verifyOptions = {
+  issuer: process.env.JWT_ISSUER || "agrovision-api",
+  audience: process.env.JWT_AUDIENCE || "agrovision-client"
+};
+
+const extractSocketToken = (socket) => {
+  const authToken = socket.handshake?.auth?.token;
+
+  if (typeof authToken === "string" && authToken.trim()) {
+    return authToken.trim();
+  }
+
+  const header = socket.handshake?.headers?.authorization;
+  if (typeof header === "string" && header.startsWith("Bearer ")) {
+    return header.split(" ")[1];
+  }
+
+  return null;
+};
+
+const parseTokenPayload = (token) => {
+  if (!token || !process.env.JWT_SECRET) {
+    return null;
+  }
+
+  try {
+    return jwt.verify(token, process.env.JWT_SECRET, verifyOptions);
+  } catch {
+    return null;
+  }
+};
+
+const toSafeText = (value, maxLength = 2000) =>
+  String(value || "")
+    .trim()
+    .slice(0, maxLength);
+
+const toSafeNumber = (value, fallback = null) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const buildConversationId = (cropId, firstUserId, secondUserId) => {
+  const [left, right] = [String(firstUserId || ""), String(secondUserId || "")].sort();
+  return `crop:${cropId}:${left}:${right}`;
+};
+
+const shapeMessagePayload = (message) => ({
+  id: String(message._id),
+  conversationId: String(message.conversationId),
+  cropId: String(message.cropId),
+  fromUserId: String(message.fromUserId),
+  toUserId: String(message.toUserId),
+  messageType: message.messageType,
+  text: message.text || "",
+  imageUrl: message.imageUrl || "",
+  offer: {
+    amount: toSafeNumber(message.offer?.amount, null),
+    quantity: toSafeNumber(message.offer?.quantity, null),
+    note: message.offer?.note || ""
+  },
+  createdAt: message.createdAt
+});
+
+const resolveChatParticipants = async ({ cropId, requesterId, targetUserId, farmerId }) => {
+  if (!mongoose.Types.ObjectId.isValid(cropId)) {
+    return null;
+  }
+
+  let resolvedTarget = String(targetUserId || farmerId || "").trim();
+
+  if (!resolvedTarget) {
+    const listing = await CropListing.findById(cropId).select("farmer").lean();
+    resolvedTarget = String(listing?.farmer || "").trim();
+  }
+
+  if (!resolvedTarget || resolvedTarget === String(requesterId || "")) {
+    return null;
+  }
+
+  const conversationId = buildConversationId(cropId, requesterId, resolvedTarget);
+
+  return {
+    cropId: String(cropId),
+    targetUserId: resolvedTarget,
+    conversationId
+  };
+};
+
+export const initializeSocketServer = (httpServer, { allowedOrigins = [] } = {}) => {
+  if (ioInstance) {
+    return ioInstance;
+  }
+
+  ioInstance = new Server(httpServer, {
+    cors: {
+      origin: (origin, callback) => {
+        if (!origin || allowedOrigins.includes(origin)) {
+          return callback(null, true);
+        }
+
+        return callback(new Error("Not allowed by CORS"));
+      },
+      credentials: true,
+      methods: ["GET", "POST"]
+    }
+  });
+
+  ioInstance.use((socket, next) => {
+    const token = extractSocketToken(socket);
+    const payload = parseTokenPayload(token);
+
+    if (!payload) {
+      return next();
+    }
+
+    socket.data.user = {
+      id: String(payload.id || ""),
+      role: String(payload.role || "").toLowerCase()
+    };
+
+    return next();
+  });
+
+  ioInstance.on("connection", (socket) => {
+    const userId = socket.data?.user?.id;
+    const role = socket.data?.user?.role;
+
+    if (userId) {
+      socket.join(`user:${userId}`);
+    }
+
+    if (role === "buyer") {
+      socket.join("buyers");
+    }
+
+    socket.on("join_buyer_room", ({ userId: requestedUserId } = {}) => {
+      if (userId && String(requestedUserId || "") === userId) {
+        socket.join("buyers");
+        socket.join(`buyer:${userId}`);
+      }
+    });
+
+    /**
+     * start_chat
+     * Initializes a buyer-farmer conversation room for a crop detail page.
+     */
+    socket.on("start_chat", async (payload = {}, ack) => {
+      try {
+        if (!userId) {
+          socket.emit("receive_message", {
+            type: "error",
+            message: "Authentication required to start chat"
+          });
+          return;
+        }
+
+        const cropId = String(payload.cropId || "").trim();
+        const participants = await resolveChatParticipants({
+          cropId,
+          requesterId: userId,
+          targetUserId: payload.targetUserId,
+          farmerId: payload.farmerId
+        });
+
+        if (!participants) {
+          socket.emit("receive_message", {
+            type: "error",
+            message: "Unable to start chat for this crop"
+          });
+          return;
+        }
+
+        const room = `chat:${participants.conversationId}`;
+        socket.join(room);
+
+        const historyRows = await CropChatMessage.find({
+          conversationId: participants.conversationId
+        })
+          .sort({ createdAt: -1 })
+          .limit(CHAT_HISTORY_LIMIT)
+          .lean();
+
+        const history = historyRows.reverse().map(shapeMessagePayload);
+
+        const historyPayload = {
+          type: "history",
+          conversationId: participants.conversationId,
+          cropId: participants.cropId,
+          participants: [userId, participants.targetUserId],
+          messages: history
+        };
+
+        socket.emit("receive_message", historyPayload);
+
+        ioInstance.to(`user:${participants.targetUserId}`).emit("receive_message", {
+          type: "chat_started",
+          conversationId: participants.conversationId,
+          cropId: participants.cropId,
+          fromUserId: userId
+        });
+
+        if (typeof ack === "function") {
+          ack({ success: true, ...historyPayload });
+        }
+      } catch (error) {
+        socket.emit("receive_message", {
+          type: "error",
+          message: "Failed to initialize chat"
+        });
+
+        if (typeof ack === "function") {
+          ack({ success: false, message: error.message });
+        }
+      }
+    });
+
+    /**
+     * send_message
+     * Supports messageType text | image | offer for negotiation workflows.
+     */
+    socket.on("send_message", async (payload = {}, ack) => {
+      try {
+        if (!userId) {
+          socket.emit("receive_message", {
+            type: "error",
+            message: "Authentication required to send message"
+          });
+          return;
+        }
+
+        const cropId = String(payload.cropId || "").trim();
+        const participants = await resolveChatParticipants({
+          cropId,
+          requesterId: userId,
+          targetUserId: payload.targetUserId,
+          farmerId: payload.farmerId
+        });
+
+        if (!participants) {
+          socket.emit("receive_message", {
+            type: "error",
+            message: "Unable to resolve chat participants"
+          });
+          return;
+        }
+
+        const messageType = ["text", "image", "offer"].includes(String(payload.messageType || ""))
+          ? String(payload.messageType)
+          : "text";
+
+        const text = toSafeText(payload.text, 2000);
+        const imageUrl = toSafeText(payload.imageUrl, 2000);
+        const offerAmount = toSafeNumber(payload.offer?.amount, null);
+        const offerQuantity = toSafeNumber(payload.offer?.quantity, null);
+        const offerNote = toSafeText(payload.offer?.note, 300);
+
+        if (messageType === "text" && !text) {
+          socket.emit("receive_message", {
+            type: "error",
+            message: "Text message cannot be empty"
+          });
+          return;
+        }
+
+        if (messageType === "image" && !imageUrl) {
+          socket.emit("receive_message", {
+            type: "error",
+            message: "Image URL is required for image messages"
+          });
+          return;
+        }
+
+        if (messageType === "offer" && offerAmount == null) {
+          socket.emit("receive_message", {
+            type: "error",
+            message: "Offer amount is required for offer negotiation"
+          });
+          return;
+        }
+
+        const created = await CropChatMessage.create({
+          conversationId: participants.conversationId,
+          cropId,
+          fromUserId: userId,
+          toUserId: participants.targetUserId,
+          messageType,
+          text,
+          imageUrl,
+          offer: {
+            amount: offerAmount,
+            quantity: offerQuantity,
+            note: offerNote
+          }
+        });
+
+        const messagePayload = {
+          type: "message",
+          conversationId: participants.conversationId,
+          cropId,
+          message: shapeMessagePayload(created)
+        };
+
+        const room = `chat:${participants.conversationId}`;
+        ioInstance.to(room).emit("receive_message", messagePayload);
+        ioInstance.to(`user:${participants.targetUserId}`).emit("receive_message", {
+          type: "incoming",
+          conversationId: participants.conversationId,
+          cropId,
+          message: shapeMessagePayload(created)
+        });
+
+        if (typeof ack === "function") {
+          ack({ success: true, ...messagePayload });
+        }
+      } catch (error) {
+        socket.emit("receive_message", {
+          type: "error",
+          message: "Failed to send message"
+        });
+
+        if (typeof ack === "function") {
+          ack({ success: false, message: error.message });
+        }
+      }
+    });
+  });
+
+  return ioInstance;
+};
+
+export const getSocketServer = () => ioInstance;
+
+export const emitNewCropListing = (listing) => {
+  if (!ioInstance) {
+    return;
+  }
+
+  ioInstance.to("buyers").emit("new_crop_listing", {
+    listing,
+    emittedAt: new Date().toISOString()
+  });
+};
+
+/**
+ * Broadcast a crop price change to all connected buyer clients.
+ * Triggered by sellers when they update their listing price.
+ */
+export const emitCropPriceUpdate = (cropId, priceData) => {
+  if (!ioInstance) {
+    return;
+  }
+
+  ioInstance.to("buyers").emit("crop_price_update", {
+    cropId: String(cropId),
+    priceData,
+    emittedAt: new Date().toISOString()
+  });
+};
+
+export const emitToRoom = (room, event, payload) => {
+  if (!ioInstance) {
+    return;
+  }
+
+  ioInstance.to(room).emit(event, payload);
+};

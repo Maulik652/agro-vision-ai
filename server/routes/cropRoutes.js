@@ -1,14 +1,25 @@
 import express from "express";
 import { authorize, protect } from "../middleware/authMiddleware.js";
+import { createRouteRateLimiter } from "../middleware/rateLimitMiddleware.js";
+import {
+  validateBody,
+  validateParams,
+  validateQuery
+} from "../middleware/zodValidate.js";
 import {
   createCropListing,
-  getCropDetail,
   getCrops,
   getFarmerMarketIntelligence,
   getFarmerEarningsDashboard,
   getHighDemandCrops,
   getMarketTrends
 } from "../controllers/cropController.js";
+import {
+  getCropDetailById,
+  getCropReviewsById,
+  getSimilarCropsById,
+  upsertCropReview
+} from "../controllers/cropDetailController.js";
 import {
   farmerMyListings,
   farmerUpdateListing,
@@ -26,8 +37,20 @@ import {
   farmerHarvestInsights,
   farmerDemandIndicators,
 } from "../controllers/sellCropController.js";
+import {
+  cropIdParamSchema,
+  cropReviewBodySchema,
+  cropReviewsQuerySchema,
+  similarCropsQuerySchema
+} from "../validation/cropDetailValidation.js";
 
 const router = express.Router();
+
+const cropDetailLimiter = createRouteRateLimiter({
+  windowMs: 60_000,
+  max: 90,
+  message: "Too many crop detail requests. Please retry shortly."
+});
 
 router.get("/", protect, authorize("farmer", "buyer", "admin"), getCrops);
 router.get("/trends", protect, authorize("farmer", "buyer", "admin"), getMarketTrends);
@@ -58,7 +81,46 @@ router.get("/discover-buyers", protect, authorize("farmer", "admin"), farmerDisc
 router.get("/harvest-insights", protect, authorize("farmer", "admin"), farmerHarvestInsights);
 router.get("/demand-indicators", protect, authorize("farmer", "admin"), farmerDemandIndicators);
 
-router.get("/:id", protect, authorize("farmer", "buyer", "admin"), getCropDetail);
+/* ─── Crop Detail Module Endpoints ─────────────────────────────────── */
+router.get(
+  "/:id/reviews",
+  protect,
+  authorize("farmer", "buyer", "admin"),
+  cropDetailLimiter,
+  validateParams(cropIdParamSchema),
+  validateQuery(cropReviewsQuerySchema),
+  getCropReviewsById
+);
+
+router.post(
+  "/:id/reviews",
+  protect,
+  authorize("buyer", "admin"),
+  cropDetailLimiter,
+  validateParams(cropIdParamSchema),
+  validateBody(cropReviewBodySchema),
+  upsertCropReview
+);
+
+router.get(
+  "/:id/similar",
+  protect,
+  authorize("farmer", "buyer", "admin"),
+  cropDetailLimiter,
+  validateParams(cropIdParamSchema),
+  validateQuery(similarCropsQuerySchema),
+  getSimilarCropsById
+);
+
+router.get(
+  "/:id",
+  protect,
+  authorize("farmer", "buyer", "admin"),
+  cropDetailLimiter,
+  validateParams(cropIdParamSchema),
+  getCropDetailById
+);
+
 router.post("/", protect, authorize("farmer", "admin"), createCropListing);
 
 export default router;

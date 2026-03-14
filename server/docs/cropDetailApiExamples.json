@@ -1,0 +1,128 @@
+{
+  "GET /api/crops/:id": {
+    "success": true,
+    "crop": {
+      "id": "67d3a4a6f20fca9f60b5a2c1",
+      "cropName": "Wheat",
+      "category": "Cereals",
+      "pricePerKg": 28,
+      "quantityAvailable": 2400,
+      "harvestDate": "2026-03-02T00:00:00.000Z",
+      "moistureLevel": 12.7,
+      "qualityGrade": "A",
+      "organicCertified": true,
+      "images": [
+        "https://res.cloudinary.com/demo/image/upload/v1/agro/crops/wheat-1.jpg",
+        "https://res.cloudinary.com/demo/image/upload/v1/agro/crops/wheat-2.jpg"
+      ],
+      "farmerId": "67d39495d0c54f3e59af9af2",
+      "location": {
+        "city": "Nashik",
+        "state": "Maharashtra"
+      },
+      "createdAt": "2026-03-10T08:30:00.000Z",
+      "qualityMetrics": {
+        "moisturePercentage": 12.7,
+        "grainPurity": 93,
+        "sizeConsistency": 90,
+        "storageCondition": 88
+      }
+    },
+    "farmer": {
+      "id": "67d39495d0c54f3e59af9af2",
+      "name": "Ravi Patel",
+      "farmLocation": "Nashik, Maharashtra",
+      "rating": 4.8,
+      "certifications": ["FSSAI", "Organic India"],
+      "totalSales": 429500,
+      "totalReviews": 52
+    }
+  },
+  "GET /api/crops/:id/reviews": {
+    "success": true,
+    "reviews": [
+      {
+        "id": "67d3f31fe4b4d6108ba9f000",
+        "buyerId": "67d3a7c3d0c54f3e59af9b11",
+        "buyerName": "Asha Traders",
+        "rating": 5,
+        "reviewText": "Excellent quality and packaging.",
+        "createdAt": "2026-03-13T11:24:00.000Z"
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "limit": 8,
+      "total": 1,
+      "totalPages": 1
+    },
+    "avgRating": 5
+  },
+  "GET /api/crops/:id/similar": {
+    "success": true,
+    "similarCrops": [
+      {
+        "id": "67d3a4a6f20fca9f60b5a2d2",
+        "cropName": "Wheat",
+        "category": "Cereals",
+        "pricePerKg": 27,
+        "quantityAvailable": 1800,
+        "image": "https://res.cloudinary.com/demo/image/upload/v1/agro/crops/wheat-3.jpg",
+        "location": {
+          "city": "Pune",
+          "state": "Maharashtra"
+        },
+        "harvestDate": "2026-03-01T00:00:00.000Z",
+        "organicCertified": false,
+        "aiRecommendation": 0.89
+      }
+    ]
+  },
+  "GET /api/farmers/:id": {
+    "success": true,
+    "farmer": {
+      "id": "67d39495d0c54f3e59af9af2",
+      "name": "Ravi Patel",
+      "farmLocation": "Nashik, Maharashtra",
+      "rating": 4.8,
+      "totalSales": 429500,
+      "certifications": ["FSSAI", "Organic India"],
+      "totalReviews": 52,
+      "activeListings": 9
+    }
+  },
+  "POST /api/cart/add": {
+    "success": true,
+    "message": "Added to cart",
+    "cart": {
+      "buyerId": "67d3a7c3d0c54f3e59af9b11",
+      "items": [
+        {
+          "cropId": "67d3a4a6f20fca9f60b5a2c1",
+          "farmerId": "67d39495d0c54f3e59af9af2",
+          "cropName": "Wheat",
+          "image": "https://res.cloudinary.com/demo/image/upload/v1/agro/crops/wheat-1.jpg",
+          "pricePerKg": 28,
+          "quantity": 250,
+          "note": ""
+        }
+      ],
+      "itemCount": 1,
+      "subtotal": 7000
+    },
+    "buyNow": false
+  },
+  "GET /api/ai/crop-insights/:cropId": {
+    "success": true,
+    "cropId": "67d3a4a6f20fca9f60b5a2c1",
+    "cropName": "Wheat",
+    "insights": {
+      "current_price": 28,
+      "predicted_price": 31,
+      "demand_score": 0.84,
+      "volatility_index": 0.22,
+      "confidence_score": 0.91
+    },
+    "source": "ai-service"
+  }
+}

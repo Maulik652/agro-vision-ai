@@ -1,15 +1,19 @@
 import express from "express";
+import http from "http";
 import dotenv from "dotenv";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import connectDB from "./config/db.js";
+import { initializeRedisCache } from "./config/redis.js";
 
 import authRoutes from "./routes/authRoutes.js";
 import farmerRoutes from "./routes/farmerRoutes.js";
+import farmersRoutes from "./routes/farmersRoutes.js";
 import predictRoutes from "./routes/predictRoutes.js";
 import scanRoutes from "./routes/scanRoutes.js";
 import cropRoutes from "./routes/cropRoutes.js";
 import buyerRoutes from "./routes/buyerRoutes.js";
+import cartRoutes from "./routes/cartRoutes.js";
 import marketAIRoutes from "./routes/marketAIRoutes.js";
 import farmRoutes from "./routes/farmRoutes.js";
 import weatherRoutes from "./routes/weatherRoutes.js";
@@ -23,11 +27,13 @@ import notificationRoutes from "./routes/notificationRoutes.js";
 import communityRoutes from "./routes/communityRoutes.js";
 import schemeRoutes from "./routes/schemeRoutes.js";
 import fieldRoutes from "./routes/fieldRoutes.js";
+import { initializeSocketServer } from "./realtime/socketServer.js";
 
 dotenv.config();
 
 /* CONNECT DATABASE */
 connectDB();
+initializeRedisCache();
 
 const app = express();
 app.disable("x-powered-by");
@@ -60,6 +66,7 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 /* ROUTES */
 app.use("/api/auth", authRoutes);
 app.use("/api/farmer", farmerRoutes);
+app.use("/api/farmers", farmersRoutes);
 app.use("/api/farm", farmRoutes);
 app.use("/api/weather", weatherRoutes);
 app.use("/api/market", marketRoutes);
@@ -68,6 +75,7 @@ app.use("/api/predict", predictRoutes);
 app.use("/api/scan", scanRoutes);
 app.use("/api/crops", cropRoutes);
 app.use("/api/buyers", buyerRoutes);
+app.use("/api/cart", cartRoutes);
 app.use("/api/ai", marketAIRoutes);
 app.use("/api/satellite", satelliteRoutes);
 app.use("/api/farmgpt", farmGPTRoutes);
@@ -112,7 +120,9 @@ app.use((error, req, res, next) => {
 
 /* START SERVER */
 const PORT = process.env.PORT || 5000;
+const httpServer = http.createServer(app);
+initializeSocketServer(httpServer, { allowedOrigins });
 
-app.listen(PORT, () => {
+httpServer.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });

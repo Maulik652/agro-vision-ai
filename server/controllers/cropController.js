@@ -2,6 +2,7 @@ import BuyerProfile from "../models/BuyerProfile.js";
 import CropListing from "../models/CropListing.js";
 import MarketTrend from "../models/MarketTrend.js";
 import { buildSellAssistant, estimateLogistics, predictDemand, suggestPrice } from "../services/marketAIService.js";
+import { emitNewCropListing } from "../realtime/socketServer.js";
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const toNumber = (value, fallback = 0) => {
@@ -378,6 +379,16 @@ export const createCropListing = async (req, res) => {
       .populate("farmer", "name phone city state")
       .lean();
 
+    emitNewCropListing({
+      listingId: String(listing._id),
+      cropName,
+      variety,
+      price,
+      quantity,
+      location,
+      farmerId: String(req.user._id)
+    });
+
     return res.status(201).json({
       success: true,
       message: "Crop listing created successfully",
@@ -408,6 +419,15 @@ export const getCropDetail = async (req, res) => {
     }
 
     await CropListing.updateOne({ _id: listing._id }, { $inc: { views: 1 } });
+
+    emitNewCropListing({
+      listingId: String(listing._id),
+      cropName,
+      variety,
+      price,
+      quantity,
+      location
+    });
 
     const [relatedRows, trendRows] = await Promise.all([
       CropListing.find({
