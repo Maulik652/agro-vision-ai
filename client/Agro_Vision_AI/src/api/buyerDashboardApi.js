@@ -1,35 +1,19 @@
 import api from "./axios";
 
-export const getBuyerDashboardInsights = async () => {
-  const response = await api.get("/buyers/dashboard/insights");
-  return response.data;
-};
+export const getDashboardSummary = () =>
+  api.get("/buyer/dashboard/summary");
 
-export const getBuyerPriceTrends = async (crop = "Wheat", days = 30) => {
-  const response = await api.get("/buyers/dashboard/price-trends", {
-    params: { crop, days }
-  });
-  return response.data;
-};
+export const getDeals = () =>
+  api.get("/buyer/dashboard/marketplace-deals");
 
-export const getBuyerRecommendations = async () => {
-  const response = await api.get("/buyers/dashboard/recommendations");
-  return response.data;
-};
+export const getOrders = () =>
+  api.get("/buyer/dashboard/orders");
 
-export const getBuyerWallet = async () => {
-  const response = await api.get("/buyers/dashboard/wallet");
-  return response.data;
-};
+export const getWallet = () =>
+  api.get("/buyer/dashboard/wallet");
 
-export const getBuyerOrders = async (status = "", limit = 10) => {
-  const response = await api.get("/buyers/dashboard/orders", {
-    params: { status, limit }
-  });
-  return response.data;
-};
+export const getNotifications = () =>
+  api.get("/buyer/dashboard/notifications");
 
-export const getBuyerAnalytics = async () => {
-  const response = await api.get("/buyers/dashboard/analytics");
-  return response.data;
-};
+export const getRecommendations = () =>
+  api.get("/buyer/dashboard/recommendations");

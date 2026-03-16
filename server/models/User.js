@@ -60,6 +60,11 @@ const userSchema = new mongoose.Schema(
   qualification: String,
   experience: Number,
 
+  // Profile panel fields
+  location: { type: String, default: "", trim: true },
+  bio:      { type: String, default: "", maxlength: 500 },
+  photo:    { type: String, default: "" },
+
   failedLoginAttempts: {
     type: Number,
     default: 0,

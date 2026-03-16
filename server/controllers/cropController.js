@@ -1,4 +1,3 @@
-import BuyerProfile from "../models/BuyerProfile.js";
 import CropListing from "../models/CropListing.js";
 import MarketTrend from "../models/MarketTrend.js";
 import { buildSellAssistant, estimateLogistics, predictDemand, suggestPrice } from "../services/marketAIService.js";

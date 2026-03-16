@@ -48,11 +48,7 @@ const findCrop = async (cropId) => {
 
   const objectId = new mongoose.Types.ObjectId(cropId);
 
-  const listing = await CropListing.findOne({
-    _id: objectId,
-    isActive: true,
-    status: "active"
-  }).lean();
+  const listing = await CropListing.findById(objectId).lean();
 
   if (listing) {
     return {

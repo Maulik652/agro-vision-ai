@@ -7,53 +7,24 @@ const buyerProfileSchema = new mongoose.Schema(
       ref: "User",
       required: true,
       unique: true,
-      index: true
+      index: true,
     },
-    businessName: {
-      type: String,
-      required: true,
-      trim: true,
-      maxlength: 120
-    },
+    businessName: { type: String, default: "", trim: true, maxlength: 150 },
     location: {
-      city: {
-        type: String,
-        required: true,
-        trim: true,
-        maxlength: 100,
-        index: true
-      },
-      state: {
-        type: String,
-        required: true,
-        trim: true,
-        maxlength: 100
-      }
+      city: { type: String, default: "", trim: true },
+      state: { type: String, default: "", trim: true },
     },
     cropsInterested: {
       type: [String],
-      default: []
+      default: [],
     },
-    rating: {
-      type: Number,
-      default: 4.4,
-      min: 0,
-      max: 5
-    },
-    verified: {
-      type: Boolean,
-      default: false
-    },
-    notes: {
-      type: String,
-      default: ""
-    }
+    rating: { type: Number, default: 4.0, min: 0, max: 5 },
+    verified: { type: Boolean, default: false },
+    totalOrders: { type: Number, default: 0 },
+    totalSpend: { type: Number, default: 0 },
   },
-  {
-    timestamps: true
-  }
+  { timestamps: true }
 );
 
-buyerProfileSchema.index({ "location.city": 1, cropsInterested: 1, rating: -1 });
-
-export default mongoose.models.BuyerProfile || mongoose.model("BuyerProfile", buyerProfileSchema);
+export default mongoose.models.BuyerProfile ||
+  mongoose.model("BuyerProfile", buyerProfileSchema);

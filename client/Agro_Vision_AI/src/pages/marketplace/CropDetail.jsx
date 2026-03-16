@@ -13,14 +13,14 @@ import {
   fetchSimilarCrops,
   submitCropReview
 } from "../../api/cropDetailApi";
-import ActionPanel from "../../components/cropDetail/ActionPanel";
-import AIInsights from "../../components/cropDetail/AIInsights";
-import CropGallery from "../../components/cropDetail/CropGallery";
-import CropInfo from "../../components/cropDetail/CropInfo";
-import FarmerCard from "../../components/cropDetail/FarmerCard";
-import QualityMetrics from "../../components/cropDetail/QualityMetrics";
-import ReviewSection from "../../components/cropDetail/ReviewSection";
-import SimilarCrops from "../../components/cropDetail/SimilarCrops";
+import ActionPanel from "../../components/buyer/cropDetail/ActionPanel";
+import AIInsights from "../../components/buyer/cropDetail/AIInsights";
+import CropGallery from "../../components/buyer/cropDetail/CropGallery";
+import CropInfo from "../../components/buyer/cropDetail/CropInfo";
+import FarmerCard from "../../components/buyer/cropDetail/FarmerCard";
+import QualityMetrics from "../../components/buyer/cropDetail/QualityMetrics";
+import ReviewSection from "../../components/buyer/cropDetail/ReviewSection";
+import SimilarCrops from "../../components/buyer/cropDetail/SimilarCrops";
 import { connectCropDetailSocket } from "../../realtime/cropDetailSocket";
 import { useCropDetailStore } from "../../store/cropDetailStore";
 

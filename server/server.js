@@ -28,6 +28,15 @@ import communityRoutes from "./routes/communityRoutes.js";
 import schemeRoutes from "./routes/schemeRoutes.js";
 import fieldRoutes from "./routes/fieldRoutes.js";
 import { initializeSocketServer } from "./realtime/socketServer.js";
+import buyerDashboardRoutes from "./routes/buyerDashboardRoutes.js";
+import dashboardRoutes from "./routes/dashboardRoutes.js";
+import addressRoutes from "./routes/addressRoutes.js";
+import orderRoutes from "./routes/orderRoutes.js";
+import paymentRoutes from "./routes/paymentRoutes.js";
+import chatRoutes from "./routes/chatRoutes.js";
+import walletRoutes from "./routes/walletRoutes.js";
+import analyticsRoutes from "./routes/analyticsRoutes.js";
+
 
 dotenv.config();
 
@@ -85,7 +94,14 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api/community", communityRoutes);
 app.use("/api/schemes", schemeRoutes);
 app.use("/api/fields", fieldRoutes);
-
+app.use("/api/buyer/dashboard", buyerDashboardRoutes);
+app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/addresses", addressRoutes);
+app.use("/api/orders", orderRoutes);
+app.use("/api/payments", paymentRoutes);
+app.use("/api/chat", chatRoutes);
+app.use("/api/wallet", walletRoutes);
+app.use("/api/analytics", analyticsRoutes);
 /* HEALTH CHECK ROUTE */
 app.get("/", (req, res) => {
   res.send("API is running...");

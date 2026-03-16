@@ -139,6 +139,54 @@ export const aiLogisticsEstimate = async (req, res) => {
   }
 };
 
+export const aiPriceNegotiation = async (req, res) => {
+  try {
+    const crop = String(req.body.crop || req.body.cropName || "").trim();
+    const farmerPrice = toNumber(req.body.farmerPrice, NaN);
+    const buyerOffer = toNumber(req.body.buyerOffer, NaN);
+    const location = String(req.body.location || "").trim();
+
+    if (!crop) return res.status(400).json({ success: false, message: "crop is required" });
+    if (!Number.isFinite(farmerPrice) || farmerPrice <= 0)
+      return res.status(400).json({ success: false, message: "farmerPrice must be > 0" });
+    if (!Number.isFinite(buyerOffer) || buyerOffer <= 0)
+      return res.status(400).json({ success: false, message: "buyerOffer must be > 0" });
+
+    // Simple negotiation logic: recommend midpoint weighted toward market
+    const midpoint = (farmerPrice + buyerOffer) / 2;
+    const spread = farmerPrice - buyerOffer;
+    const spreadRatio = spread / farmerPrice;
+
+    // Acceptance probability: higher when offer is close to farmer price
+    const rawProb = Math.max(0.05, Math.min(0.97, 1 - spreadRatio * 1.4));
+    const recommended_price = Math.round((midpoint + farmerPrice * 0.35 + buyerOffer * 0.15) / 2 * 100) / 100;
+    const acceptance_probability = Math.round(rawProb * 100) / 100;
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        recommended_price,
+        acceptance_probability,
+        farmer_price: farmerPrice,
+        buyer_offer: buyerOffer,
+        spread: Math.round(spread * 100) / 100,
+        insight: spreadRatio < 0.1
+          ? "Very close to agreement — farmer likely to accept."
+          : spreadRatio < 0.2
+          ? "Reasonable gap — a small concession from both sides should close the deal."
+          : "Large gap — consider meeting closer to the market price.",
+        model: "Negotiation Engine v1"
+      }
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Unable to generate negotiation suggestion",
+      detail: error.message
+    });
+  }
+};
+
 export const aiSellAssistant = async (req, res) => {
   try {
     const crop = String(req.body.crop || req.body.cropName || "").trim();

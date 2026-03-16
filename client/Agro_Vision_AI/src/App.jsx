@@ -1,8 +1,8 @@
 import React from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import Navbar from "./components/Navbar";
-import Footer from "./components/Footer";
-import ProtectedRoute from "./components/ProtectedRoute";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import Navbar from "./components/shared/Navbar";
+import Footer from "./components/shared/Footer";
+import ProtectedRoute from "./components/shared/ProtectedRoute";
 
 /* Guest Pages */
 import Home from "./pages/Home";
@@ -27,26 +27,28 @@ import FarmManager from "./pages/farmer/FarmManager";
 import CropCalendar from "./pages/farmer/CropCalendar";
 import FarmFinance from "./pages/farmer/FarmFinance";
 import Community from "./pages/farmer/Community";
+import FarmerChat from "./pages/farmer/Chat";
 
 /* Buyer Pages */
 import BuyerDashboard from "./pages/buyer/BuyerDashboard";
 import BuyerMarketplace from "./pages/buyer/Marketplace";
-import BuyerOrders from "./pages/buyer/Orders";
-import BuyerProfile from "./pages/buyer/Profile";
+import BuyerCropDetail from "./pages/buyer/CropDetail";
+import Orders from "./pages/buyer/Orders";
+import OrderDetails from "./pages/buyer/OrderDetails";
 import Cart from "./pages/buyer/Cart";
 import Checkout from "./pages/buyer/Checkout";
 import Payment from "./pages/buyer/Payment";
 import Chat from "./pages/buyer/Chat";
 import Wallet from "./pages/buyer/Wallet";
+import Analytics from "./pages/buyer/Analytics";
 
 /* Expert Pages */
 import ExpertDashboard from "./pages/expert/ExpertDashboard";
 import ExpertAdvisory from "./pages/expert/Advisory";
 import ExpertReports from "./pages/expert/Reports";
 import ExpertProfile from "./pages/expert/Profile";
-import CropDetail from "./pages/marketplace/CropDetail";
+import MarketplaceCropDetail from "./pages/marketplace/CropDetail";
 import { Toaster } from "react-hot-toast";
-import CropDetails from "./pages/buyer/CropDetails";
 
 function App() {
   return (
@@ -85,11 +87,12 @@ function App() {
   <Route path="/farmer/crop-calendar" element={<CropCalendar />} />
   <Route path="/farmer/finance" element={<FarmFinance />} />
   <Route path="/farmer/community" element={<Community />} />
+  <Route path="/farmer/chat" element={<FarmerChat />} />
 
 </Route>
 
             <Route element={<ProtectedRoute allowedRoles={["farmer", "buyer"]} />}>
-              <Route path="/marketplace/crop/:id" element={<CropDetail />} />
+              <Route path="/marketplace/crop/:id" element={<MarketplaceCropDetail />} />
             </Route>
 
             {/* ================= BUYER ROUTES ================= */}
@@ -97,14 +100,17 @@ function App() {
 
   <Route path="/buyer/dashboard" element={<BuyerDashboard />} />
   <Route path="/buyer/marketplace" element={<BuyerMarketplace />} />
-  <Route path="/buyer/cropdetails" element={<CropDetails />} />
+  <Route path="/buyer/cropdetails" element={<BuyerCropDetail />} />
+  <Route path="/buyer/orders" element={<Orders />} />
+  <Route path="/buyer/orders/:orderId" element={<OrderDetails />} />
   <Route path="/buyer/cart" element={<Cart />} />
   <Route path="/buyer/checkout" element={<Checkout />} />
   <Route path="/buyer/payment" element={<Payment />} />
-  <Route path="/buyer/orders" element={<BuyerOrders />} />
   <Route path="/buyer/chat" element={<Chat />} />
   <Route path="/buyer/wallet" element={<Wallet />} />
-  <Route path="/buyer/profile" element={<BuyerProfile />} />
+  <Route path="/buyer/analytics" element={<Analytics />} />
+  {/* Profile is a panel — redirect old route to dashboard */}
+  <Route path="/buyer/profile" element={<Navigate to="/buyer/dashboard" replace />} />
 
 </Route>
 

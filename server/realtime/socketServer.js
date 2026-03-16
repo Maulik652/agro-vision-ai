@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
 import CropListing from "../models/CropListing.js";
 import CropChatMessage from "../models/CropChatMessage.js";
+import { registerChatNamespace } from "./chatNamespace.js";
 
 let ioInstance = null;
 const CHAT_HISTORY_LIMIT = 40;
@@ -115,6 +116,9 @@ export const initializeSocketServer = (httpServer, { allowedOrigins = [] } = {})
     }
   });
 
+  // Register the dedicated buyer↔farmer chat namespace
+  registerChatNamespace(ioInstance);
+
   ioInstance.use((socket, next) => {
     const token = extractSocketToken(socket);
     const payload = parseTokenPayload(token);
@@ -141,12 +145,33 @@ export const initializeSocketServer = (httpServer, { allowedOrigins = [] } = {})
 
     if (role === "buyer") {
       socket.join("buyers");
+      socket.join("dashboard:buyers");
+
+      if (userId) {
+        socket.join(`dashboard:buyer:${userId}`);
+      }
     }
 
     socket.on("join_buyer_room", ({ userId: requestedUserId } = {}) => {
       if (userId && String(requestedUserId || "") === userId) {
         socket.join("buyers");
+        socket.join("dashboard:buyers");
         socket.join(`buyer:${userId}`);
+        socket.join(`dashboard:buyer:${userId}`);
+      }
+    });
+
+    /**
+     * subscribe_dashboard_events
+     * Buyer dashboard clients join dedicated rooms for scoped real-time alerts.
+     */
+    socket.on("subscribe_dashboard_events", ({ userId: requestedUserId } = {}) => {
+      if (userId && String(requestedUserId || "") === userId) {
+        socket.join(`dashboard:buyer:${userId}`);
+      }
+
+      if (role === "buyer") {
+        socket.join("dashboard:buyers");
       }
     });
 
@@ -319,6 +344,14 @@ export const initializeSocketServer = (httpServer, { allowedOrigins = [] } = {})
           message: shapeMessagePayload(created)
         });
 
+        ioInstance.to(`user:${participants.targetUserId}`).emit("new_message", {
+          conversationId: participants.conversationId,
+          cropId,
+          fromUserId: userId,
+          message: shapeMessagePayload(created),
+          emittedAt: new Date().toISOString()
+        });
+
         if (typeof ack === "function") {
           ack({ success: true, ...messagePayload });
         }
@@ -349,6 +382,11 @@ export const emitNewCropListing = (listing) => {
     listing,
     emittedAt: new Date().toISOString()
   });
+
+  ioInstance.to("dashboard:buyers").emit("new_crop_listing", {
+    listing,
+    emittedAt: new Date().toISOString()
+  });
 };
 
 /**
@@ -373,4 +411,52 @@ export const emitToRoom = (room, event, payload) => {
   }
 
   ioInstance.to(room).emit(event, payload);
+};
+
+/**
+ * emitDashboardEvent
+ * Centralized helper for buyer dashboard events:
+ * - order_update
+ * - new_crop_listing
+ * - price_drop_alert
+ * - new_message
+ */
+export const emitDashboardEvent = ({ eventName, payload, buyerId }) => {
+  if (!ioInstance) {
+    return;
+  }
+
+  const safeEvent = String(eventName || "").trim();
+
+  if (!safeEvent) {
+    return;
+  }
+
+  const eventPayload = {
+    ...(payload || {}),
+    emittedAt: new Date().toISOString()
+  };
+
+  if (buyerId) {
+    ioInstance.to(`dashboard:buyer:${String(buyerId)}`).emit(safeEvent, eventPayload);
+    return;
+  }
+
+  ioInstance.to("dashboard:buyers").emit(safeEvent, eventPayload);
+};
+
+export const emitOrderUpdate = ({ buyerId, order }) => {
+  emitDashboardEvent({
+    eventName: "order_update",
+    payload: { order },
+    buyerId
+  });
+};
+
+export const emitPriceDropAlert = ({ buyerId, crop }) => {
+  emitDashboardEvent({
+    eventName: "price_drop_alert",
+    payload: { crop },
+    buyerId
+  });
 };

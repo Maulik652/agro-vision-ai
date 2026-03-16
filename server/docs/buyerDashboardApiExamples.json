@@ -1,0 +1,223 @@
+{
+  "info": {
+    "title": "Buyer Dashboard API",
+    "description": "All routes are under /api/dashboard and require Authorization: Bearer <jwt>. The authenticated user must have role=buyer or role=admin.",
+    "rateLimit": "100 requests per 60 seconds per IP"
+  },
+  "routes": {
+    "GET /api/dashboard/overview": {
+      "description": "High-level KPI snapshot for the authenticated buyer. Redis cache TTL=120s.",
+      "auth": "buyer | admin",
+      "query": {},
+      "response": {
+        "success": true,
+        "data": {
+          "totalOrders": 42,
+          "activeOrders": 3,
+          "totalSpending": 18450.75,
+          "walletBalance": 5200.0,
+          "thisMonthSpending": 3100.0,
+          "thisMonthOrders": 8,
+          "averageOrderValue": 439.3
+        }
+      }
+    },
+    "GET /api/dashboard/price-trends": {
+      "description": "Price time-series for a given crop over the last N days. Sourced from MarketTrend first, falls back to buyer order history.",
+      "auth": "buyer | admin",
+      "query": {
+        "crop": "Tomato (optional, string)",
+        "days": "30 | 60 | 90 (optional, default 30)"
+      },
+      "response": {
+        "success": true,
+        "data": {
+          "crop": "Tomato",
+          "days": 30,
+          "availableCrops": ["Tomato", "Onion", "Potato"],
+          "points": [
+            { "date": "2024-05-01", "price": 32.5 },
+            { "date": "2024-05-02", "price": 31.8 }
+          ],
+          "summary": {
+            "currentPrice": 31.8,
+            "averagePrice": 32.1,
+            "minPrice": 28.0,
+            "maxPrice": 36.5,
+            "changePercent": -2.15
+          }
+        }
+      }
+    },
+    "GET /api/dashboard/recommendations": {
+      "description": "AI-powered crop buying recommendations. Calls the FastAPI /ai/recommend-crops endpoint; falls back to computed scores from active listings if the service is unavailable.",
+      "auth": "buyer | admin",
+      "query": {
+        "limit": "1-12 (optional, default 6)",
+        "cropFilter": "comma-separated crop names, e.g. Tomato,Onion (optional)"
+      },
+      "response": {
+        "success": true,
+        "data": [
+          {
+            "cropName": "Tomato",
+            "imageUrl": "https://...",
+            "predictedPrice": 34.2,
+            "demandScore": 0.82,
+            "risk": "Low Risk",
+            "confidence": 0.89,
+            "reason": "High demand trend, low supply risk in your region",
+            "listingId": "60c72b2f9b1e8c1234567890"
+          }
+        ]
+      }
+    },
+    "GET /api/dashboard/recent-orders": {
+      "description": "Most recent orders placed by the buyer, with farmer name resolved.",
+      "auth": "buyer | admin",
+      "query": {
+        "limit": "1-25 (optional, default 8)"
+      },
+      "response": {
+        "success": true,
+        "data": [
+          {
+            "_id": "665abc",
+            "orderId": "ORD-20240501-001",
+            "cropName": "Tomato",
+            "farmerName": "Ramesh Kumar",
+            "quantity": 50,
+            "unit": "kg",
+            "totalPrice": 1750.0,
+            "status": "delivered",
+            "createdAt": "2024-05-01T10:30:00.000Z"
+          }
+        ]
+      }
+    },
+    "GET /api/dashboard/spending": {
+      "description": "Monthly and weekly spending aggregations for analytics charts.",
+      "auth": "buyer | admin",
+      "query": {},
+      "response": {
+        "success": true,
+        "data": {
+          "monthly": [
+            { "label": "Jun 2023", "amount": 4200.0 },
+            { "label": "Jul 2023", "amount": 3800.0 }
+          ],
+          "weekly": [
+            { "label": "Week 1", "purchases": 5 },
+            { "label": "Week 2", "purchases": 7 }
+          ]
+        }
+      }
+    },
+    "GET /api/dashboard/top-farmers": {
+      "description": "Top farmers ranked by buyer order volume, with ratings and total spend.",
+      "auth": "buyer | admin",
+      "query": {
+        "limit": "1-12 (optional, default 6)"
+      },
+      "response": {
+        "success": true,
+        "data": [
+          {
+            "_id": "farmerId",
+            "name": "Ramesh Kumar",
+            "profileImage": "https://...",
+            "rating": 4.7,
+            "reviewCount": 23,
+            "totalOrders": 12,
+            "totalSpend": 5200.0
+          }
+        ]
+      }
+    },
+    "GET /api/dashboard/ai-insights": {
+      "description": "Real-time AI market insights combining price prediction (XGBoost) and demand forecasting (RandomForest) from the FastAPI service. Falls back to computed values if service is down.",
+      "auth": "buyer | admin",
+      "query": {},
+      "response": {
+        "success": true,
+        "data": {
+          "predictedPrice": {
+            "value": 34.8,
+            "unit": "₹/kg",
+            "model": "XGBoost",
+            "confidence": 0.91,
+            "crop": "Tomato"
+          },
+          "demandForecast": {
+            "score": 0.78,
+            "level": "high",
+            "model": "RandomForest",
+            "trend": "rising"
+          },
+          "marketVolatility": {
+            "score": 0.28,
+            "level": "low",
+            "message": "Market is relatively stable"
+          },
+          "generatedAt": "2024-05-10T08:00:00.000Z"
+        }
+      }
+    },
+    "GET /api/dashboard/favorite-crops": {
+      "description": "Top crops by order frequency for this buyer, with trend direction computed from recent vs previous purchase windows.",
+      "auth": "buyer | admin",
+      "query": {
+        "limit": "1-12 (optional, default 6)"
+      },
+      "response": {
+        "success": true,
+        "data": [
+          {
+            "cropName": "Tomato",
+            "imageUrl": "https://...",
+            "avgPrice": 32.4,
+            "purchases": 18,
+            "trend": "rising"
+          }
+        ]
+      }
+    }
+  },
+  "socketEvents": {
+    "server": "http://localhost:5000",
+    "auth": "socket.auth = { token: '<jwt>' }",
+    "rooms": {
+      "dashboard:buyers": "All connected buyers receive broadcast crop listing events",
+      "dashboard:buyer:<userId>": "Per-buyer room receiving order updates, price drop alerts, and new messages"
+    },
+    "emitOnConnect": {
+      "event": "subscribe_dashboard_events",
+      "payload": { "userId": "<userId>" },
+      "description": "Tell the server to join the per-buyer dashboard room"
+    },
+    "clientListens": {
+      "order_update": {
+        "payload": { "order": { "orderId": "ORD-001", "status": "shipped" }, "emittedAt": "ISO8601" }
+      },
+      "new_crop_listing": {
+        "payload": { "listing": { "cropName": "Onion", "price": 28 }, "emittedAt": "ISO8601" }
+      },
+      "price_drop_alert": {
+        "payload": { "crop": { "cropName": "Tomato", "newPrice": 26, "oldPrice": 34 }, "emittedAt": "ISO8601" }
+      },
+      "new_message": {
+        "payload": { "senderId": "farmerId", "text": "Your order is ready.", "emittedAt": "ISO8601" }
+      }
+    }
+  },
+  "aiService": {
+    "base": "http://127.0.0.1:8001",
+    "env": "BUYER_AI_SERVICE_URL",
+    "timeoutMs": 2800,
+    "endpoints": {
+      "POST /ai/price-prediction": "XGBoost price prediction given features array",
+      "POST /ai/demand-forecast": "RandomForest demand score given features array",
+      "POST /ai/recommend-crops": "Recommend crops given available listings + buyer history"
+    }
+  }
+}

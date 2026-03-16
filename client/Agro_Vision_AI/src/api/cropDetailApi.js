@@ -1,36 +1,69 @@
 import api from "./axios";
 
-export const fetchCropDetail = async (cropId) => {
-	const response = await api.get(`/crops/${cropId}`);
-	return response.data;
-};
+const unwrap = (res) => res.data?.data ?? res.data;
 
-export const fetchCropReviews = async (cropId, params = {}) => {
-	const response = await api.get(`/crops/${cropId}/reviews`, { params });
-	return response.data;
-};
+/**
+ * Fetch full crop listing detail by ID.
+ * GET /api/crops/:id
+ */
+export async function fetchCropDetail(cropId) {
+  const res = await api.get(`/crops/${cropId}`);
+  return unwrap(res);
+}
 
-export const submitCropReview = async (cropId, payload) => {
-	const response = await api.post(`/crops/${cropId}/reviews`, payload);
-	return response.data;
-};
+/**
+ * Fetch similar crop listings.
+ * GET /api/crops/:id/similar
+ */
+export async function fetchSimilarCrops(cropId, { limit = 6 } = {}) {
+  const res = await api.get(`/crops/${cropId}/similar`, { params: { limit } });
+  return unwrap(res) ?? [];
+}
 
-export const fetchSimilarCrops = async (cropId, params = {}) => {
-	const response = await api.get(`/crops/${cropId}/similar`, { params });
-	return response.data;
-};
+/**
+ * Fetch reviews for a crop listing.
+ * GET /api/crops/:id/reviews
+ */
+export async function fetchCropReviews(cropId, { page = 1, limit = 10 } = {}) {
+  const res = await api.get(`/crops/${cropId}/reviews`, { params: { page, limit } });
+  return unwrap(res) ?? [];
+}
 
-export const fetchFarmerDetail = async (farmerId) => {
-	const response = await api.get(`/farmers/${farmerId}`);
-	return response.data;
-};
+/**
+ * Submit or update a review for a crop listing.
+ * POST /api/crops/:id/reviews
+ * @param {string} cropId
+ * @param {{ rating: number, comment: string }} body
+ */
+export async function submitCropReview(cropId, body) {
+  const res = await api.post(`/crops/${cropId}/reviews`, body);
+  return unwrap(res);
+}
 
-export const addCropToCart = async (payload) => {
-	const response = await api.post("/cart/add", payload);
-	return response.data;
-};
+/**
+ * Fetch farmer profile by farmer user ID.
+ * GET /api/farmers/:id
+ */
+export async function fetchFarmerDetail(farmerId) {
+  const res = await api.get(`/farmers/${farmerId}`);
+  return unwrap(res);
+}
 
-export const fetchAICropInsights = async (cropId) => {
-	const response = await api.get(`/ai/crop-insights/${cropId}`);
-	return response.data;
-};
+/**
+ * Fetch AI-powered crop insights for a listing.
+ * GET /api/ai/crop-insights/:cropId
+ */
+export async function fetchAICropInsights(cropId) {
+  const res = await api.get(`/ai/crop-insights/${cropId}`);
+  return unwrap(res);
+}
+
+/**
+ * Add a crop listing to the buyer's cart.
+ * POST /api/cart/add
+ * @param {{ cropId: string, quantity: number }} body
+ */
+export async function addCropToCart(body) {
+  const res = await api.post(`/cart/add`, body);
+  return unwrap(res);
+}
