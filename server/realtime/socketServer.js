@@ -139,6 +139,37 @@ export const initializeSocketServer = (httpServer, { allowedOrigins = [] } = {})
     const userId = socket.data?.user?.id;
     const role = socket.data?.user?.role;
 
+    /* Expert joins their personal room for consultation notifications */
+    if (userId && role === "expert") {
+      socket.join(`expert:${userId}`);
+    }
+
+    /* Join a consultation chat room */
+    socket.on("join_consultation", ({ consultationId } = {}) => {
+      if (consultationId) {
+        socket.join(`consultation:${String(consultationId)}`);
+      }
+    });
+
+    /* Typing indicators for consultation chat */
+    socket.on("typing_start", ({ consultationId, userId: typingUserId } = {}) => {
+      if (consultationId) {
+        socket.to(`consultation:${String(consultationId)}`).emit("typing_start", {
+          consultationId,
+          userId: typingUserId || userId
+        });
+      }
+    });
+
+    socket.on("typing_stop", ({ consultationId, userId: typingUserId } = {}) => {
+      if (consultationId) {
+        socket.to(`consultation:${String(consultationId)}`).emit("typing_stop", {
+          consultationId,
+          userId: typingUserId || userId
+        });
+      }
+    });
+
     if (userId) {
       socket.join(`user:${userId}`);
     }

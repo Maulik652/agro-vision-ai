@@ -41,13 +41,20 @@ import Payment from "./pages/buyer/Payment";
 import Chat from "./pages/buyer/Chat";
 import Wallet from "./pages/buyer/Wallet";
 import Analytics from "./pages/buyer/Analytics";
+import BuyerAdvisory from "./pages/buyer/Advisory";
 
 /* Expert Pages */
 import ExpertDashboard from "./pages/expert/ExpertDashboard";
+import ConsultationRequests from "./pages/expert/ConsultationRequests";
+import ActiveConsultations from "./pages/expert/ActiveConsultations";
 import ExpertAdvisory from "./pages/expert/Advisory";
 import ExpertReports from "./pages/expert/Reports";
-import ExpertProfile from "./pages/expert/Profile";
+import Earnings from "./pages/expert/Earnings";
+import Reviews from "./pages/expert/Reviews";
+import Schedule from "./pages/expert/Schedule";
 import MarketplaceCropDetail from "./pages/marketplace/CropDetail";
+import ConsultationRequestPage from "./pages/shared/ConsultationRequestPage";
+import SchedulePage from "./pages/shared/SchedulePage";
 import { Toaster } from "react-hot-toast";
 
 function App() {
@@ -88,6 +95,8 @@ function App() {
   <Route path="/farmer/finance" element={<FarmFinance />} />
   <Route path="/farmer/community" element={<Community />} />
   <Route path="/farmer/chat" element={<FarmerChat />} />
+  <Route path="/farmer/consultation" element={<ConsultationRequestPage />} />
+  <Route path="/farmer/schedule" element={<SchedulePage />} />
 
 </Route>
 
@@ -109,6 +118,9 @@ function App() {
   <Route path="/buyer/chat" element={<Chat />} />
   <Route path="/buyer/wallet" element={<Wallet />} />
   <Route path="/buyer/analytics" element={<Analytics />} />
+  <Route path="/buyer/consultation" element={<ConsultationRequestPage />} />
+  <Route path="/buyer/schedule" element={<SchedulePage />} />
+  <Route path="/buyer/advisory" element={<BuyerAdvisory />} />
   {/* Profile is a panel — redirect old route to dashboard */}
   <Route path="/buyer/profile" element={<Navigate to="/buyer/dashboard" replace />} />
 
@@ -117,10 +129,14 @@ function App() {
             {/* ================= EXPERT ROUTES ================= */}
            <Route element={<ProtectedRoute allowedRoles={["expert"]} />}>
 
-  <Route path="/expert/dashboard" element={<ExpertDashboard />} />
-  <Route path="/expert/advisory" element={<ExpertAdvisory />} />
-  <Route path="/expert/reports" element={<ExpertReports />} />
-  <Route path="/expert/profile" element={<ExpertProfile />} />
+  <Route path="/expert/dashboard"             element={<ExpertDashboard />}        />
+  <Route path="/expert/consultation-requests" element={<ConsultationRequests />}   />
+  <Route path="/expert/active-consultations"  element={<ActiveConsultations />}    />
+  <Route path="/expert/advisory"              element={<ExpertAdvisory />}         />
+  <Route path="/expert/reports"               element={<ExpertReports />}          />
+  <Route path="/expert/earnings"              element={<Earnings />}               />
+  <Route path="/expert/reviews"               element={<Reviews />}                />
+  <Route path="/expert/schedule"              element={<Schedule />}               />
 
 </Route>
             {/* ================= 404 ================= */}

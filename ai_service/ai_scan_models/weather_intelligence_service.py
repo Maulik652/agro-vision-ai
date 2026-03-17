@@ -8,13 +8,22 @@ from .common import clamp, safe_float, sanitize_crop_type
 
 
 CROP_WEATHER_TARGETS = {
-    "tomato": {"temp": 27.0, "humidity": 68.0, "rainfall": 95.0},
-    "rice": {"temp": 30.0, "humidity": 78.0, "rainfall": 140.0},
-    "wheat": {"temp": 23.0, "humidity": 55.0, "rainfall": 78.0},
-    "cotton": {"temp": 29.0, "humidity": 62.0, "rainfall": 92.0},
-    "maize": {"temp": 26.0, "humidity": 60.0, "rainfall": 86.0},
-    "soybean": {"temp": 25.0, "humidity": 64.0, "rainfall": 88.0},
+    # Original 7 crops
+    "tomato":    {"temp": 27.0, "humidity": 68.0, "rainfall": 95.0},
+    "rice":      {"temp": 30.0, "humidity": 78.0, "rainfall": 140.0},
+    "wheat":     {"temp": 23.0, "humidity": 55.0, "rainfall": 78.0},
+    "cotton":    {"temp": 29.0, "humidity": 62.0, "rainfall": 92.0},
+    "maize":     {"temp": 26.0, "humidity": 60.0, "rainfall": 86.0},
+    "soybean":   {"temp": 25.0, "humidity": 64.0, "rainfall": 88.0},
     "groundnut": {"temp": 28.0, "humidity": 58.0, "rainfall": 82.0},
+    # 7 new crops — accurate agronomic targets
+    "potato":    {"temp": 20.0, "humidity": 70.0, "rainfall": 90.0},
+    "sugarcane": {"temp": 32.0, "humidity": 72.0, "rainfall": 160.0},
+    "mango":     {"temp": 30.0, "humidity": 60.0, "rainfall": 100.0},
+    "banana":    {"temp": 28.0, "humidity": 78.0, "rainfall": 150.0},
+    "grapes":    {"temp": 24.0, "humidity": 55.0, "rainfall": 70.0},
+    "onion":     {"temp": 22.0, "humidity": 52.0, "rainfall": 65.0},
+    "sunflower": {"temp": 25.0, "humidity": 55.0, "rainfall": 75.0},
 }
 
 

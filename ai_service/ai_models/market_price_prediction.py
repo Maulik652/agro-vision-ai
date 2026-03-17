@@ -24,7 +24,11 @@ def predict(payload: Dict) -> Dict:
     demand_factor = clamp(0.92 + (scores["rain_score"] / 400.0) + (scores["temp_score"] / 600.0), 0.85, 1.18)
 
     predicted_price = profile["market_base_price"] * seasonal_factor * demand_factor
-    predicted_price = round(clamp(predicted_price, 1200.0, 9200.0), 0)
+
+    # Clamp within ±40% of the crop's own base price so predictions stay realistic
+    price_floor = profile["market_base_price"] * 0.60
+    price_ceiling = profile["market_base_price"] * 1.55
+    predicted_price = round(clamp(predicted_price, price_floor, price_ceiling), 0)
 
     confidence = confidence_from_scores(
         scores["temp_score"],

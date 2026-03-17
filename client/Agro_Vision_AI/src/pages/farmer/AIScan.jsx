@@ -246,10 +246,11 @@ const AIScan = () => {
   const fileInputRef = useRef(null);
 
   /* Scan pipeline state */
-  const [scanState,      setScanState]      = useState("idle"); // idle|checking|scanning|done
+  const [scanState,      setScanState]      = useState("idle"); // idle|checking|scanning|done|error
   const [scanProgress,   setScanProgress]   = useState(0);
   const [scanStep,       setScanStep]       = useState(0);
   const [qualityWarning, setQualityWarning] = useState(null);
+  const [notCropError,   setNotCropError]   = useState(false);
   const [result,         setResult]         = useState(null);
 
   /* Auxiliary data */
@@ -314,6 +315,7 @@ const AIScan = () => {
     setScanState("idle");
     setResult(null);
     setQualityWarning(null);
+    setNotCropError(false);
   }, []);
 
   const onFileChange = (e) => { const f = e.target.files?.[0]; if (f) handleFile(f); };
@@ -434,7 +436,18 @@ const AIScan = () => {
         prevention: Array.isArray(d.prevention) && d.prevention.length
           ? d.prevention : FALLBACK_RESULT.prevention,
       });
-    } catch {
+    } catch (err) {
+      // Handle non-crop image rejection (HTTP 422)
+      const status = err?.response?.status;
+      const errCode = err?.response?.data?.error;
+      if (status === 422 || errCode === "NOT_A_CROP_IMAGE") {
+        setNotCropError(true);
+        setQualityWarning("This doesn't look like a crop image. Please upload a clear photo of a plant leaf or crop field.");
+        setScanProgress(0);
+        setScanState("idle");
+        toast.error("Not a crop image. Please upload a plant or leaf photo.");
+        return;
+      }
       setResult({ ...FALLBACK_RESULT });
     }
 
@@ -449,12 +462,14 @@ const AIScan = () => {
     setScanState("idle");
     setResult(null);
     setQualityWarning(null);
+    setNotCropError(false);
     setScanProgress(0);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   /* ── Derived values ──────────────────────────────────────────────────────── */
   const isBusy       = scanState === "checking" || scanState === "scanning";
+  const scanBlocked  = notCropError; // block scan until new image is selected
   const diseaseKB    = result ? (DISEASE_KB[result.disease] || DISEASE_KB["default"]) : null;
 
   const confChartData = result
@@ -698,9 +713,22 @@ const AIScan = () => {
                 {CROP_TYPES.map((c) => <option key={c}>{c}</option>)}
               </select>
 
-              {/* Quality warning */}
+              {/* Quality / not-crop warning */}
               <AnimatePresence>
-                {qualityWarning && (
+                {notCropError && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="mt-3 flex items-start gap-2 overflow-hidden rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-800"
+                  >
+                    <X size={13} className="mt-0.5 shrink-0 text-red-500" />
+                    <span>
+                      <strong>Not a crop image.</strong> Please upload a clear photo of a plant leaf or crop field. Faces, vehicles, and other objects are not accepted.
+                    </span>
+                  </motion.div>
+                )}
+                {!notCropError && qualityWarning && (
                   <motion.div
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: "auto" }}
@@ -733,14 +761,16 @@ const AIScan = () => {
             </div>
 
             <motion.button
-              whileHover={{ scale: isBusy || !imageFile ? 1 : 1.015 }}
-              whileTap={{ scale: isBusy || !imageFile ? 1 : 0.975 }}
+              whileHover={{ scale: isBusy || !imageFile || scanBlocked ? 1 : 1.015 }}
+              whileTap={{ scale: isBusy || !imageFile || scanBlocked ? 1 : 0.975 }}
               onClick={handleScan}
-              disabled={isBusy || !imageFile}
+              disabled={isBusy || !imageFile || scanBlocked}
               className="flex w-full items-center justify-center gap-2 rounded-2xl bg-linear-to-br from-green-700 to-emerald-600 py-4 text-base font-bold text-white shadow-lg shadow-green-900/20 transition-all hover:shadow-green-800/35 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isBusy
                 ? <><RefreshCw size={16} className="animate-spin" /> Scanning…</>
+                : scanBlocked
+                ? <><X size={16} /> Upload a crop image to scan</>
                 : <><ScanLine size={16} /> Run AI Disease Scan</>}
             </motion.button>
           </GlassCard>

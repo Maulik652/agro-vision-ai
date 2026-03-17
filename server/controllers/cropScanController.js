@@ -100,10 +100,23 @@ const callPythonCLI = (imageBuffer, mimeType, cropType) =>
 
     child.on("close", (code) => {
       if (code !== 0) {
+        try {
+          const parsed = JSON.parse(stdout.trim());
+          if (parsed.error === "NOT_A_CROP_IMAGE") {
+            const err = new Error("NOT_A_CROP_IMAGE");
+            err.isNotCropImage = true;
+            return reject(err);
+          }
+        } catch { /* ignore parse error, fall through */ }
         return reject(new Error(`Python CLI exited ${code}: ${stderr.slice(0, 400)}`));
       }
       try {
         const parsed = JSON.parse(stdout.trim());
+        if (parsed.error === "NOT_A_CROP_IMAGE") {
+          const err = new Error("NOT_A_CROP_IMAGE");
+          err.isNotCropImage = true;
+          return reject(err);
+        }
         if (parsed.error) return reject(new Error(parsed.error));
         resolve(parsed);
       } catch {
@@ -134,38 +147,22 @@ export const aiCropScan = async (req, res) => {
     const mimeType    = (req.file.mimetype || "image/jpeg").toLowerCase();
     const imageBuffer = req.file.buffer;
 
-    /* Attempt FastAPI → CLI → built-in fallback */
+    /* Attempt FastAPI → CLI */
     let rawResult = await callFastAPI(imageBuffer, mimeType, cropType);
 
     if (!rawResult) {
       try {
         rawResult = await callPythonCLI(imageBuffer, mimeType, cropType);
       } catch (cliError) {
+        // Non-crop image — return 422 with clear message, no fallback
+        if (cliError.isNotCropImage) {
+          return res.status(422).json({
+            error: "NOT_A_CROP_IMAGE",
+            message: "This doesn't look like a crop image. Please upload a clear photo of a plant leaf or crop field.",
+          });
+        }
         console.error("cropScan CLI error:", cliError.message);
-        /* Hard fallback so the frontend never receives a 500 */
-        rawResult = {
-          disease:     "Leaf Disease Detected",
-          confidence:  0.72,
-          severity:    40,
-          healthScore: 68,
-          predictions: [
-            { disease: "Leaf Disease Detected", confidence: 0.72 },
-            { disease: "Leaf Spot",             confidence: 0.18 },
-            { disease: "Healthy Leaf",          confidence: 0.10 },
-          ],
-          treatment:  [
-            "Apply broad-spectrum fungicide as per label instructions",
-            "Remove visibly infected plant tissue and dispose safely",
-            "Increase field scouting frequency to every 2–3 days",
-            "Consult your local agricultural extension officer",
-          ],
-          prevention: [
-            "Practice seasonal crop rotation to break disease cycles",
-            "Use certified disease-free seeds each season",
-            "Maintain proper plant spacing for airflow",
-            "Install drip irrigation to avoid leaf-wetting",
-          ],
-        };
+        return res.status(503).json({ message: "AI scan service temporarily unavailable. Please try again." });
       }
     }
 

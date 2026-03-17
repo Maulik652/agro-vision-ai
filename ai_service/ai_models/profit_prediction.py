@@ -47,7 +47,9 @@ def predict(payload: Dict) -> Dict:
     price_variation = clamp(math.sin(volatility_seed / 17.0) * 0.08, -0.08, 0.08)
 
     price_per_quintal = profile["market_base_price"] * seasonal_factor * (1.0 + price_variation)
-    price_per_quintal = clamp(price_per_quintal, 1200.0, 9200.0)
+    price_floor = profile["market_base_price"] * 0.60
+    price_ceiling = profile["market_base_price"] * 1.55
+    price_per_quintal = clamp(price_per_quintal, price_floor, price_ceiling)
 
     total_quintal = expected_yield_tpha * hectares * 10.0
     revenue = total_quintal * price_per_quintal

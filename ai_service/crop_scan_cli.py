@@ -31,7 +31,7 @@ from __future__ import annotations
 import json
 import sys
 
-from ai_scan_models.common import DISEASE_LIBRARY, sanitize_crop_type
+from ai_scan_models.common import DISEASE_LIBRARY, NOT_A_CROP_IMAGE_ERROR, sanitize_crop_type
 from ai_scan_models.crop_disease_detection import predict as disease_predict
 from ai_scan_models.crop_health_score import predict as health_predict
 
@@ -262,6 +262,16 @@ def main() -> int:
     try:
         disease_result = disease_predict(payload)
         health_result  = health_predict(payload)
+    except ValueError as exc:
+        err_msg = str(exc)
+        if NOT_A_CROP_IMAGE_ERROR in err_msg:
+            print(json.dumps({
+                "error": NOT_A_CROP_IMAGE_ERROR,
+                "message": "This image does not appear to be a crop or plant. Please upload a clear photo of a plant leaf or crop field."
+            }))
+            return 2
+        print(json.dumps({"error": err_msg}))
+        return 1
     except Exception as exc:                  # pragma: no cover
         print(json.dumps({"error": str(exc)}))
         return 1

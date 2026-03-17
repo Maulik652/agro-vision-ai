@@ -19,10 +19,10 @@ const walletTransactionSchema = new mongoose.Schema(
       enum: ["credit", "debit"],
       required: true,
     },
-    // "topup" | "order_payment" | "refund" | "escrow_release"
+    // "topup" | "order_payment" | "consultation_payment" | "refund" | "escrow_release"
     category: {
       type: String,
-      enum: ["topup", "order_payment", "refund", "escrow_release"],
+      enum: ["topup", "order_payment", "consultation_payment", "refund", "escrow_release"],
       required: true,
     },
     amount: {

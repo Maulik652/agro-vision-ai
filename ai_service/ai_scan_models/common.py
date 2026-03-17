@@ -14,124 +14,239 @@ except Exception:  # pragma: no cover - environment fallback
 
 SUPPORTED_MIME_TYPES = {"image/jpeg", "image/jpg", "image/png"}
 
+# Error code for non-crop images — caught by CLI and controller
+NOT_A_CROP_IMAGE_ERROR = "NOT_A_CROP_IMAGE"
+
 
 DISEASE_LIBRARY = {
     "tomato": {
-        "name": "Leaf Blight",
+        "name": "Early Blight",
         "severity": "Medium",
         "confidence": 93,
         "probability": [28, 42, 58, 74, 87, 93],
-        "recommendation": "Apply fungicide spray within 3 days.",
-        "explanation": "The leaf pattern indicates early symptoms of leaf blight disease."
+        "recommendation": "Apply copper-based fungicide (2 g/L) within 3 days. Remove infected leaves.",
+        "explanation": "Concentric ring lesions on lower leaves indicate Alternaria solani early blight."
     },
     "rice": {
         "name": "Bacterial Leaf Streak",
         "severity": "Low",
         "confidence": 89,
         "probability": [21, 34, 47, 63, 78, 89],
-        "recommendation": "Use copper-based spray and improve drainage.",
-        "explanation": "Linear lesions on leaf surface suggest bacterial streak pressure."
+        "recommendation": "Use copper-based bactericide spray and improve field drainage.",
+        "explanation": "Water-soaked linear lesions between veins indicate Xanthomonas bacterial streak."
     },
     "wheat": {
-        "name": "Rust Spot",
+        "name": "Yellow Rust",
         "severity": "Medium",
-        "confidence": 90,
-        "probability": [19, 31, 45, 62, 80, 90],
-        "recommendation": "Apply triazole fungicide and monitor every 2 days.",
-        "explanation": "Orange-brown pustules indicate likely rust development stage."
+        "confidence": 91,
+        "probability": [19, 31, 45, 62, 80, 91],
+        "recommendation": "Apply triazole fungicide (propiconazole 0.1%) immediately. Monitor every 2 days.",
+        "explanation": "Yellow-orange stripe pustules along leaf veins indicate Puccinia striiformis rust."
     },
     "cotton": {
         "name": "Alternaria Leaf Spot",
         "severity": "Moderate",
         "confidence": 91,
         "probability": [24, 36, 49, 64, 79, 91],
-        "recommendation": "Spray broad-spectrum fungicide and reduce canopy humidity.",
-        "explanation": "Concentric dark lesions indicate probable alternaria infection."
+        "recommendation": "Spray carbendazim (0.1%) and reduce canopy humidity by pruning.",
+        "explanation": "Concentric dark lesions with yellow halo indicate Alternaria macrospora infection."
     },
     "maize": {
         "name": "Northern Leaf Blight",
         "severity": "Medium",
         "confidence": 90,
         "probability": [23, 35, 50, 66, 81, 90],
-        "recommendation": "Apply recommended fungicide and remove affected leaves.",
-        "explanation": "Elongated gray lesions are consistent with maize blight pattern."
+        "recommendation": "Apply mancozeb (0.2%) fungicide and remove infected lower leaves.",
+        "explanation": "Elongated gray-green cigar-shaped lesions indicate Exserohilum turcicum blight."
     },
     "soybean": {
         "name": "Soybean Rust",
         "severity": "Low",
         "confidence": 88,
         "probability": [18, 29, 43, 60, 75, 88],
-        "recommendation": "Use preventive fungicide and maintain airflow.",
-        "explanation": "Small pustules beneath leaves indicate early soybean rust risk."
+        "recommendation": "Apply tebuconazole fungicide preventively. Maintain airflow between rows.",
+        "explanation": "Small tan-brown pustules on lower leaf surface indicate Phakopsora pachyrhizi rust."
     },
     "groundnut": {
         "name": "Tikka Leaf Spot",
         "severity": "Moderate",
         "confidence": 90,
         "probability": [20, 32, 48, 65, 79, 90],
-        "recommendation": "Apply chlorothalonil spray and monitor spread weekly.",
-        "explanation": "Circular dark spots on leaflets indicate likely tikka disease."
-    }
+        "recommendation": "Apply chlorothalonil (0.2%) spray every 7 days. Monitor from 30 DAS.",
+        "explanation": "Circular dark spots with yellow halo on leaflets indicate Cercospora tikka disease."
+    },
+    "potato": {
+        "name": "Late Blight",
+        "severity": "High",
+        "confidence": 92,
+        "probability": [22, 38, 55, 70, 84, 92],
+        "recommendation": "Apply metalaxyl + mancozeb immediately. Destroy infected tubers off-field.",
+        "explanation": "Water-soaked dark lesions with white sporulation indicate Phytophthora infestans late blight."
+    },
+    "sugarcane": {
+        "name": "Red Rot",
+        "severity": "Moderate",
+        "confidence": 89,
+        "probability": [20, 33, 48, 63, 78, 89],
+        "recommendation": "Remove and destroy infected stools. Apply carbendazim dip to seed cane.",
+        "explanation": "Red discoloration of internal stalk tissue with white patches indicates Colletotrichum falcatum red rot."
+    },
+    "mango": {
+        "name": "Anthracnose",
+        "severity": "Medium",
+        "confidence": 88,
+        "probability": [18, 30, 44, 60, 76, 88],
+        "recommendation": "Apply copper oxychloride (0.3%) spray. Prune infected branches and improve airflow.",
+        "explanation": "Dark irregular lesions on leaves and fruit indicate Colletotrichum gloeosporioides anthracnose."
+    },
+    "banana": {
+        "name": "Sigatoka Leaf Spot",
+        "severity": "Medium",
+        "confidence": 87,
+        "probability": [17, 29, 43, 58, 74, 87],
+        "recommendation": "Apply propiconazole fungicide. Remove severely infected leaves at base.",
+        "explanation": "Yellow streaks progressing to brown necrotic spots indicate Mycosphaerella musicola Sigatoka."
+    },
+    "grapes": {
+        "name": "Downy Mildew",
+        "severity": "Moderate",
+        "confidence": 90,
+        "probability": [21, 34, 49, 65, 80, 90],
+        "recommendation": "Apply copper-based fungicide before rain. Improve canopy ventilation by leaf removal.",
+        "explanation": "Yellow oil spots on upper leaf with white downy growth below indicate Plasmopara viticola."
+    },
+    "onion": {
+        "name": "Purple Blotch",
+        "severity": "Medium",
+        "confidence": 88,
+        "probability": [19, 31, 46, 62, 77, 88],
+        "recommendation": "Apply mancozeb (0.25%) spray. Avoid overhead irrigation and improve drainage.",
+        "explanation": "Purple-centered lesions with yellow halo on leaves indicate Alternaria porri purple blotch."
+    },
+    "sunflower": {
+        "name": "Alternaria Leaf Blight",
+        "severity": "Medium",
+        "confidence": 87,
+        "probability": [18, 30, 44, 60, 75, 87],
+        "recommendation": "Apply iprodione fungicide. Remove infected lower leaves and maintain plant spacing.",
+        "explanation": "Dark brown circular lesions with concentric rings indicate Alternaria helianthi blight."
+    },
 }
 
 
 PEST_LIBRARY = {
     "tomato": {
-        "name": "Aphids",
-        "damage": "Low",
-        "risk": "Medium",
-        "confidence": 90,
-        "recommendation": "Apply neem oil spray to prevent spread.",
-        "explanation": "Small clusters on leaves indicate aphid infestation."
+        "name": "Fruit Borer",
+        "damage": "Moderate",
+        "risk": "High",
+        "confidence": 91,
+        "recommendation": "Apply spinosad or chlorpyrifos spray. Use pheromone traps for monitoring.",
+        "explanation": "Entry holes in fruit and frass deposits indicate Helicoverpa armigera fruit borer."
     },
     "rice": {
         "name": "Brown Planthopper",
         "damage": "Moderate",
         "risk": "High",
         "confidence": 92,
-        "recommendation": "Deploy light traps and targeted pesticide rotation.",
-        "explanation": "Stem base feeding pattern suggests hopper pressure."
+        "recommendation": "Deploy light traps and apply buprofezin insecticide. Drain field temporarily.",
+        "explanation": "Stem base feeding and hopper burn pattern indicate Nilaparvata lugens infestation."
     },
     "wheat": {
-        "name": "Armyworm",
+        "name": "Aphids",
         "damage": "Low",
         "risk": "Medium",
         "confidence": 88,
-        "recommendation": "Use bio-pesticide spray and evening scouting.",
-        "explanation": "Leaf-edge chewing and frass spots indicate early armyworm activity."
+        "recommendation": "Apply imidacloprid (0.3 mL/L) spray. Use yellow sticky traps for monitoring.",
+        "explanation": "Leaf curl and honeydew deposits indicate Schizaphis graminum aphid colonies."
     },
     "cotton": {
         "name": "Bollworm",
         "damage": "Moderate",
         "risk": "High",
         "confidence": 91,
-        "recommendation": "Apply pheromone trap program and targeted spray.",
-        "explanation": "Entry holes and boll feeding signs indicate bollworm presence."
+        "recommendation": "Apply pheromone trap program and emamectin benzoate spray.",
+        "explanation": "Entry holes in bolls and frass indicate Helicoverpa armigera bollworm attack."
     },
     "maize": {
         "name": "Fall Armyworm",
         "damage": "High",
         "risk": "High",
         "confidence": 93,
-        "recommendation": "Apply rapid control treatment and isolate hotspot rows.",
-        "explanation": "Whorl damage pattern indicates active fall armyworm attack."
+        "recommendation": "Apply chlorantraniliprole spray immediately. Treat whorl with granules.",
+        "explanation": "Whorl damage with frass and window-pane feeding indicate Spodoptera frugiperda."
     },
     "soybean": {
         "name": "Stem Fly",
         "damage": "Low",
         "risk": "Medium",
         "confidence": 87,
-        "recommendation": "Use seed treatment for next cycle and monitor plants.",
-        "explanation": "Stem tunneling signs indicate likely stem fly stress."
+        "recommendation": "Use seed treatment with thiamethoxam. Monitor seedlings at 7-10 DAS.",
+        "explanation": "Stem tunneling and wilting of seedlings indicate Melanagromyza sojae stem fly."
     },
     "groundnut": {
         "name": "Leaf Miner",
         "damage": "Moderate",
         "risk": "Medium",
         "confidence": 89,
-        "recommendation": "Use selective insecticide and remove heavily affected leaves.",
-        "explanation": "Blotch mines on leaves indicate leaf miner damage."
-    }
+        "recommendation": "Apply dimethoate (0.03%) spray. Remove heavily mined leaves.",
+        "explanation": "Blotch mines and serpentine trails on leaflets indicate Aproaerema modicella leaf miner."
+    },
+    "potato": {
+        "name": "Potato Tuber Moth",
+        "damage": "Moderate",
+        "risk": "High",
+        "confidence": 90,
+        "recommendation": "Apply chlorpyrifos at hilling stage. Use pheromone traps in storage.",
+        "explanation": "Leaf mining and tuber tunneling indicate Phthorimaea operculella tuber moth."
+    },
+    "sugarcane": {
+        "name": "Top Borer",
+        "damage": "High",
+        "risk": "High",
+        "confidence": 91,
+        "recommendation": "Apply carbofuran granules in leaf whorl. Release Trichogramma parasitoids.",
+        "explanation": "Dead heart symptom and shot holes in leaves indicate Scirpophaga excerptalis top borer."
+    },
+    "mango": {
+        "name": "Mango Hopper",
+        "damage": "Moderate",
+        "risk": "High",
+        "confidence": 89,
+        "recommendation": "Apply imidacloprid (0.5 mL/L) at panicle emergence. Prune dense canopy.",
+        "explanation": "Nymph colonies on panicles and honeydew deposits indicate Idioscopus nitidulus hopper."
+    },
+    "banana": {
+        "name": "Banana Weevil",
+        "damage": "High",
+        "risk": "High",
+        "confidence": 90,
+        "recommendation": "Apply chlorpyrifos to corm. Use pheromone traps and remove crop debris.",
+        "explanation": "Corm tunneling and plant toppling indicate Cosmopolites sordidus banana weevil."
+    },
+    "grapes": {
+        "name": "Thrips",
+        "damage": "Moderate",
+        "risk": "Medium",
+        "confidence": 88,
+        "recommendation": "Apply spinosad (0.3 mL/L) spray. Use blue sticky traps for monitoring.",
+        "explanation": "Silver-bronze leaf scarring and distorted shoot tips indicate Thrips flavus infestation."
+    },
+    "onion": {
+        "name": "Thrips",
+        "damage": "Moderate",
+        "risk": "High",
+        "confidence": 90,
+        "recommendation": "Apply fipronil (0.3 mL/L) spray. Maintain field hygiene and remove weed hosts.",
+        "explanation": "Silver streaks and leaf tip curl indicate Thrips tabaci onion thrips feeding."
+    },
+    "sunflower": {
+        "name": "Capitulum Borer",
+        "damage": "High",
+        "risk": "High",
+        "confidence": 89,
+        "recommendation": "Apply chlorpyrifos at bud stage. Use pheromone traps for adult monitoring.",
+        "explanation": "Bored florets and frass in capitulum indicate Helicoverpa armigera capitulum borer."
+    },
 }
 
 
@@ -140,118 +255,187 @@ NUTRIENT_LIBRARY = {
         "nutrient": "Nitrogen Deficiency",
         "severity": "Moderate",
         "confidence": 88,
-        "recommendation": "Apply nitrogen-rich fertilizer in split doses.",
-        "explanation": "Yellow leaf patterns suggest nitrogen deficiency."
+        "recommendation": "Apply calcium nitrate (19-0-0) at 2 g/L foliar spray. Split soil application into 3 doses.",
+        "explanation": "Uniform yellowing starting from older lower leaves with green veins indicates nitrogen deficiency."
     },
     "rice": {
         "nutrient": "Zinc Deficiency",
         "severity": "Low",
         "confidence": 84,
-        "recommendation": "Apply zinc sulfate spray within 5 days.",
-        "explanation": "Interveinal chlorosis indicates probable zinc deficiency."
+        "recommendation": "Apply zinc sulfate (0.5%) foliar spray within 5 days. Soil apply ZnSO4 at 25 kg/ha.",
+        "explanation": "Interveinal chlorosis with brown rusty spots on young leaves indicates zinc deficiency."
     },
     "wheat": {
         "nutrient": "Nitrogen Deficiency",
         "severity": "Low",
         "confidence": 82,
-        "recommendation": "Top dress nitrogen and maintain moisture.",
-        "explanation": "Pale foliage and slowed growth indicate low nitrogen availability."
+        "recommendation": "Top-dress urea at 30 kg/ha at tillering stage. Maintain adequate soil moisture.",
+        "explanation": "Pale yellow-green foliage starting from leaf tips and slowed tillering indicate low nitrogen."
     },
     "cotton": {
         "nutrient": "Potassium Deficiency",
         "severity": "Moderate",
         "confidence": 86,
-        "recommendation": "Apply potassium sulfate through fertigation.",
-        "explanation": "Leaf edge scorching suggests potassium stress."
+        "recommendation": "Apply muriate of potash (60 kg K2O/ha) through fertigation. Foliar spray KNO3 (1%).",
+        "explanation": "Marginal leaf scorch progressing inward with interveinal yellowing indicates potassium stress."
     },
     "maize": {
         "nutrient": "Nitrogen Deficiency",
         "severity": "Moderate",
         "confidence": 87,
-        "recommendation": "Apply urea in two splits and check soil moisture.",
-        "explanation": "V-shaped yellowing on lower leaves indicates nitrogen deficiency."
+        "recommendation": "Apply urea at 50 kg/ha in two splits at V4 and V8 stages. Check soil moisture before application.",
+        "explanation": "Classic V-shaped yellowing from leaf tip on lower leaves indicates nitrogen deficiency in maize."
     },
     "soybean": {
         "nutrient": "Phosphorus Deficiency",
         "severity": "Low",
         "confidence": 83,
-        "recommendation": "Apply phosphorus-rich fertilizer and inoculant support.",
-        "explanation": "Dark-green to purplish tint indicates phosphorus stress."
+        "recommendation": "Apply DAP (18-46-0) at 100 kg/ha. Use Rhizobium inoculant to improve phosphorus uptake.",
+        "explanation": "Dark-green to purplish tint on older leaves with stunted root nodules indicates phosphorus stress."
     },
     "groundnut": {
         "nutrient": "Calcium Deficiency",
         "severity": "Moderate",
         "confidence": 85,
-        "recommendation": "Apply gypsum near pegging stage.",
-        "explanation": "Poor pod fill pattern indicates possible calcium deficiency."
-    }
+        "recommendation": "Apply gypsum at 500 kg/ha near pegging stage. Maintain soil pH 6.0–6.5.",
+        "explanation": "Empty pods and poor peg penetration with leaf tip burn indicate calcium deficiency."
+    },
+    "potato": {
+        "nutrient": "Magnesium Deficiency",
+        "severity": "Moderate",
+        "confidence": 86,
+        "recommendation": "Apply magnesium sulfate (Epsom salt) foliar spray at 2% concentration every 10 days.",
+        "explanation": "Interveinal chlorosis on older leaves with green veins remaining indicates magnesium deficiency."
+    },
+    "sugarcane": {
+        "nutrient": "Iron Deficiency",
+        "severity": "Low",
+        "confidence": 83,
+        "recommendation": "Apply ferrous sulfate (0.5%) foliar spray. Correct soil pH if above 7.5 with sulfur application.",
+        "explanation": "Young leaf yellowing with green veins (interveinal chlorosis) on new growth indicates iron deficiency."
+    },
+    "mango": {
+        "nutrient": "Zinc Deficiency",
+        "severity": "Moderate",
+        "confidence": 85,
+        "recommendation": "Apply zinc sulfate (0.5%) foliar spray at flush stage. Soil apply ZnSO4 at 500 g/tree.",
+        "explanation": "Small distorted leaves with interveinal chlorosis and shortened internodes indicate zinc deficiency."
+    },
+    "banana": {
+        "nutrient": "Potassium Deficiency",
+        "severity": "High",
+        "confidence": 88,
+        "recommendation": "Apply muriate of potash at 300 g/plant/month. Banana is a heavy potassium feeder.",
+        "explanation": "Marginal leaf scorch, premature yellowing of older leaves, and poor bunch development indicate potassium deficiency."
+    },
+    "grapes": {
+        "nutrient": "Boron Deficiency",
+        "severity": "Moderate",
+        "confidence": 84,
+        "recommendation": "Apply borax (0.1%) foliar spray at pre-bloom and post-bloom stages.",
+        "explanation": "Distorted shoot tips, poor fruit set, and corky spots on berries indicate boron deficiency."
+    },
+    "onion": {
+        "nutrient": "Sulfur Deficiency",
+        "severity": "Low",
+        "confidence": 82,
+        "recommendation": "Apply ammonium sulfate (20-0-0-24S) at 50 kg/ha. Sulfur improves bulb pungency and yield.",
+        "explanation": "Uniform yellowing of young leaves with stunted growth indicates sulfur deficiency in onion."
+    },
+    "sunflower": {
+        "nutrient": "Boron Deficiency",
+        "severity": "Moderate",
+        "confidence": 85,
+        "recommendation": "Apply borax at 1 kg/ha soil application or 0.2% foliar spray at bud stage.",
+        "explanation": "Hollow stem, distorted head, and poor seed set with interveinal chlorosis indicate boron deficiency."
+    },
 }
 
 
 CROP_SIGNATURE_LIBRARY = {
+    # Broad-leaf / solanaceous
     "tomato": {
-        "texture": 70,
-        "colorVariance": 63,
-        "spotPattern": 58,
-        "edgeComplexity": 56,
-        "moistureSignature": 69,
-        "greenLeafRatio": 0.63,
-        "yellowAreaRatio": 0.12,
+        "texture": 70, "colorVariance": 63, "spotPattern": 58,
+        "edgeComplexity": 56, "moistureSignature": 69,
+        "greenLeafRatio": 0.63, "yellowAreaRatio": 0.12,
     },
+    # Narrow-leaf cereals
     "rice": {
-        "texture": 58,
-        "colorVariance": 52,
-        "spotPattern": 44,
-        "edgeComplexity": 46,
-        "moistureSignature": 82,
-        "greenLeafRatio": 0.75,
-        "yellowAreaRatio": 0.08,
+        "texture": 58, "colorVariance": 52, "spotPattern": 44,
+        "edgeComplexity": 46, "moistureSignature": 82,
+        "greenLeafRatio": 0.75, "yellowAreaRatio": 0.08,
     },
     "wheat": {
-        "texture": 55,
-        "colorVariance": 47,
-        "spotPattern": 41,
-        "edgeComplexity": 48,
-        "moistureSignature": 50,
-        "greenLeafRatio": 0.57,
-        "yellowAreaRatio": 0.14,
+        "texture": 55, "colorVariance": 47, "spotPattern": 41,
+        "edgeComplexity": 48, "moistureSignature": 50,
+        "greenLeafRatio": 0.57, "yellowAreaRatio": 0.14,
     },
+    # Broad-leaf / fibrous
     "cotton": {
-        "texture": 64,
-        "colorVariance": 58,
-        "spotPattern": 52,
-        "edgeComplexity": 62,
-        "moistureSignature": 56,
-        "greenLeafRatio": 0.6,
-        "yellowAreaRatio": 0.1,
+        "texture": 64, "colorVariance": 58, "spotPattern": 52,
+        "edgeComplexity": 62, "moistureSignature": 56,
+        "greenLeafRatio": 0.60, "yellowAreaRatio": 0.10,
     },
+    # Broad-leaf cereal
     "maize": {
-        "texture": 60,
-        "colorVariance": 54,
-        "spotPattern": 46,
-        "edgeComplexity": 53,
-        "moistureSignature": 60,
-        "greenLeafRatio": 0.67,
-        "yellowAreaRatio": 0.09,
+        "texture": 60, "colorVariance": 54, "spotPattern": 46,
+        "edgeComplexity": 53, "moistureSignature": 60,
+        "greenLeafRatio": 0.67, "yellowAreaRatio": 0.09,
     },
+    # Trifoliate legume
     "soybean": {
-        "texture": 61,
-        "colorVariance": 56,
-        "spotPattern": 48,
-        "edgeComplexity": 51,
-        "moistureSignature": 59,
-        "greenLeafRatio": 0.64,
-        "yellowAreaRatio": 0.11,
+        "texture": 61, "colorVariance": 56, "spotPattern": 48,
+        "edgeComplexity": 51, "moistureSignature": 59,
+        "greenLeafRatio": 0.64, "yellowAreaRatio": 0.11,
     },
+    # Small compound-leaf legume
     "groundnut": {
-        "texture": 57,
-        "colorVariance": 50,
-        "spotPattern": 50,
-        "edgeComplexity": 55,
-        "moistureSignature": 53,
-        "greenLeafRatio": 0.59,
-        "yellowAreaRatio": 0.13,
-    }
+        "texture": 57, "colorVariance": 50, "spotPattern": 50,
+        "edgeComplexity": 55, "moistureSignature": 53,
+        "greenLeafRatio": 0.59, "yellowAreaRatio": 0.13,
+    },
+    # Solanaceous tuber
+    "potato": {
+        "texture": 66, "colorVariance": 60, "spotPattern": 54,
+        "edgeComplexity": 58, "moistureSignature": 65,
+        "greenLeafRatio": 0.61, "yellowAreaRatio": 0.13,
+    },
+    # Tall monocot grass
+    "sugarcane": {
+        "texture": 52, "colorVariance": 44, "spotPattern": 38,
+        "edgeComplexity": 42, "moistureSignature": 78,
+        "greenLeafRatio": 0.72, "yellowAreaRatio": 0.07,
+    },
+    # Tropical tree — large glossy leaf
+    "mango": {
+        "texture": 68, "colorVariance": 61, "spotPattern": 50,
+        "edgeComplexity": 54, "moistureSignature": 62,
+        "greenLeafRatio": 0.65, "yellowAreaRatio": 0.10,
+    },
+    # Tropical monocot — very large paddle leaf
+    "banana": {
+        "texture": 50, "colorVariance": 46, "spotPattern": 42,
+        "edgeComplexity": 44, "moistureSignature": 80,
+        "greenLeafRatio": 0.78, "yellowAreaRatio": 0.09,
+    },
+    # Vine — lobed leaf
+    "grapes": {
+        "texture": 72, "colorVariance": 65, "spotPattern": 56,
+        "edgeComplexity": 68, "moistureSignature": 58,
+        "greenLeafRatio": 0.58, "yellowAreaRatio": 0.14,
+    },
+    # Monocot — hollow tubular leaf
+    "onion": {
+        "texture": 45, "colorVariance": 38, "spotPattern": 34,
+        "edgeComplexity": 36, "moistureSignature": 55,
+        "greenLeafRatio": 0.52, "yellowAreaRatio": 0.10,
+    },
+    # Broad composite head — large rough leaf
+    "sunflower": {
+        "texture": 74, "colorVariance": 66, "spotPattern": 55,
+        "edgeComplexity": 60, "moistureSignature": 57,
+        "greenLeafRatio": 0.62, "yellowAreaRatio": 0.11,
+    },
 }
 
 
@@ -299,10 +483,68 @@ def _decode_image_bytes(image_base64: str) -> bytes:
 def sanitize_crop_type(value: str) -> str:
     key = (value or "tomato").strip().lower()
 
+    # Direct match against all 14 supported crops
     if key in DISEASE_LIBRARY:
         return key
 
-    return "tomato"
+    # Fuzzy alias mapping for common alternate spellings / frontend values
+    _aliases = {
+        "sugarcane": "sugarcane",
+        "sugar cane": "sugarcane",
+        "groundnut": "groundnut",
+        "peanut": "groundnut",
+        "maize": "maize",
+        "corn": "maize",
+        "grapes": "grapes",
+        "grape": "grapes",
+        "banana": "banana",
+        "mango": "mango",
+        "onion": "onion",
+        "sunflower": "sunflower",
+        "potato": "potato",
+        "tomato": "tomato",
+        "wheat": "wheat",
+        "rice": "rice",
+        "cotton": "cotton",
+        "soybean": "soybean",
+        "soya": "soybean",
+        "soya bean": "soybean",
+    }
+
+    return _aliases.get(key, "tomato")
+
+
+def validate_is_crop_image(preprocessed: Dict, features: Dict) -> None:
+    """Raise ValueError(NOT_A_CROP_IMAGE_ERROR) if the image is not a crop/plant image.
+
+    Checks three independent signals:
+    1. Green + yellow pixel ratio — plants always have significant green/yellow area.
+    2. Feature clarity — blurry non-plant images (faces, cars) have very low edge variance.
+    3. Texture variance — solid-color or skin-tone images have low texture complexity.
+    """
+    green_ratio = safe_float(features.get("greenLeafRatio"), 0.0)
+    yellow_ratio = safe_float(features.get("yellowAreaRatio"), 0.0)
+    feature_clarity = safe_float(preprocessed.get("featureClarity"), 0.0)
+    texture = safe_float(features.get("texture"), 0.0)
+    color_variance = safe_float(features.get("colorVariance"), 0.0)
+
+    # Signal 1: plant images always have meaningful green or yellow-green area
+    plant_color_signal = green_ratio + (yellow_ratio * 0.5)
+
+    # Signal 2: plant images have complex textures (leaf veins, spots, edges)
+    texture_signal = (texture * 0.6) + (color_variance * 0.4)
+
+    # Reject if both color and texture signals are too low
+    if plant_color_signal < 0.06 and texture_signal < 22.0:
+        raise ValueError(NOT_A_CROP_IMAGE_ERROR)
+
+    # Reject if feature clarity is extremely low (solid color, blank, or face close-up)
+    if feature_clarity < 12.0:
+        raise ValueError(NOT_A_CROP_IMAGE_ERROR)
+
+    # Reject if green ratio is near-zero AND texture is very low (non-plant object)
+    if green_ratio < 0.04 and texture < 18.0:
+        raise ValueError(NOT_A_CROP_IMAGE_ERROR)
 
 
 def validate_payload(payload: Dict) -> None:

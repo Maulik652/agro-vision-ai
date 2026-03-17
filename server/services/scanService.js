@@ -230,7 +230,7 @@ const parsePythonOutput = (rawStdout) => {
   return parsed;
 };
 
-const runPythonModule = (moduleKey, payload, timeoutMs = 2200) =>
+const runPythonModule = (moduleKey, payload, timeoutMs = 25000) =>
   new Promise((resolve, reject) => {
     const processHandle = spawn(PYTHON_EXECUTABLE, [PYTHON_ENTRY_FILE, "scan", moduleKey], {
       cwd: AI_SERVICE_DIR,

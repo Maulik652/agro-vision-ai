@@ -30,6 +30,7 @@ import AIInsights from "../../components/dashboard/AIInsights";
 import RecentOrders from "../../components/dashboard/RecentOrders";
 import NotificationsPanel from "../../components/dashboard/NotificationsPanel";
 import QuickActions from "../../components/dashboard/QuickActions";
+import AdvisoryDashboardWidget from "../../components/publicAdvisory/AdvisoryDashboardWidget";
 
 const STALE_MS = 120_000;
 
@@ -260,6 +261,9 @@ export default function BuyerDashboard() {
 
         {/* ── Section 10: Quick Actions ── */}
         <QuickActions />
+
+        {/* ── Section 11: Expert Advisories ── */}
+        <AdvisoryDashboardWidget role="buyer" />
 
       </div>
     </div>

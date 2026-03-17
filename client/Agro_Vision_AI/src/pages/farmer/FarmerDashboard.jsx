@@ -46,6 +46,7 @@ import {
 } from "recharts";
 import api from "../../api/axios";
 import { useAuth } from "../../context/AuthContext";
+import AdvisoryDashboardWidget from "../../components/publicAdvisory/AdvisoryDashboardWidget.jsx";
 
 const CACHE_PREFIX = "agv:dashboard:";
 const CACHE_TTL_MS = 1000 * 60 * 5;
@@ -1818,6 +1819,10 @@ const FarmerDashboard = () => {
               ))}
             </div>
           </GlassCard>
+        </LazySection>
+
+        <LazySection minHeightClass="min-h-[200px]">
+          <AdvisoryDashboardWidget role="farmer" />
         </LazySection>
 
         

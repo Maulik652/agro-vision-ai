@@ -36,6 +36,12 @@ import paymentRoutes from "./routes/paymentRoutes.js";
 import chatRoutes from "./routes/chatRoutes.js";
 import walletRoutes from "./routes/walletRoutes.js";
 import analyticsRoutes from "./routes/analyticsRoutes.js";
+import expertRoutes from "./routes/expertRoutes.js";
+import consultationRequestRoutes from "./routes/consultationRequestRoutes.js";
+import publicAdvisoryRoutes from "./routes/publicAdvisoryRoutes.js";
+import reviewRoutes from "./routes/reviewRoutes.js";
+import scheduleRoutes from "./routes/scheduleRoutes.js";
+import farmerMarketplaceRoutes from "./routes/farmerMarketplaceRoutes.js";
 
 
 dotenv.config();
@@ -102,6 +108,12 @@ app.use("/api/payments", paymentRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/wallet", walletRoutes);
 app.use("/api/analytics", analyticsRoutes);
+app.use("/api/expert", expertRoutes);
+app.use("/api/consultations", consultationRequestRoutes);
+app.use("/api/advisories/public", publicAdvisoryRoutes);
+app.use("/api/reviews", reviewRoutes);
+app.use("/api/schedule", scheduleRoutes);
+app.use("/api/farmer/marketplace", farmerMarketplaceRoutes);
 /* HEALTH CHECK ROUTE */
 app.get("/", (req, res) => {
   res.send("API is running...");

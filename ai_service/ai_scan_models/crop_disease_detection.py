@@ -2,6 +2,7 @@ from typing import Dict
 
 from .common import (
     DISEASE_LIBRARY,
+    NOT_A_CROP_IMAGE_ERROR,
     clamp,
     crop_display_name,
     chart_points,
@@ -12,6 +13,7 @@ from .common import (
     pipeline_snapshot,
     preprocess_image,
     sanitize_crop_type,
+    validate_is_crop_image,
     validate_payload
 )
 from .cnn_disease_model import predict_disease
@@ -25,6 +27,9 @@ def predict(payload: Dict) -> Dict:
 
     preprocessed = preprocess_image(str(payload.get("imageBase64") or ""), str(payload.get("mimeType") or "image/jpeg"))
     features = extract_features(preprocessed, selected_crop_key)
+
+    # Reject non-crop images before running any model inference
+    validate_is_crop_image(preprocessed, features)
 
     crop_inference = infer_crop_from_features(features, selected_crop_key)
     use_inferred_crop = crop_inference["confidence"] >= 68

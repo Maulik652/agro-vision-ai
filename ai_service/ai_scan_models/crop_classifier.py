@@ -50,7 +50,13 @@ def predict(payload: Dict) -> Dict:
         "crop": {
             "name": crop_name,
             "confidence": confidence,
-            "family": "Field Crop" if crop_key in {"rice", "wheat", "maize"} else "Horticulture",
+            "family": (
+                "Cereal Crop" if crop_key in {"rice", "wheat", "maize"}
+                else "Cash Crop" if crop_key in {"cotton", "sugarcane", "groundnut", "soybean", "sunflower"}
+                else "Vegetable Crop" if crop_key in {"tomato", "potato", "onion"}
+                else "Fruit Crop" if crop_key in {"mango", "banana", "grapes"}
+                else "Field Crop"
+            ),
             "selectedCrop": crop_display_name(selected_crop_key),
             "usedProfile": crop_display_name(crop_key),
             "isSelectedCropMatch": crop_inference["isPayloadMatch"],
