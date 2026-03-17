@@ -31,6 +31,7 @@ import RecentOrders from "../../components/dashboard/RecentOrders";
 import NotificationsPanel from "../../components/dashboard/NotificationsPanel";
 import QuickActions from "../../components/dashboard/QuickActions";
 import AdvisoryDashboardWidget from "../../components/publicAdvisory/AdvisoryDashboardWidget";
+import SchemesDashboardWidget from "../../components/schemes/SchemesDashboardWidget";
 
 const STALE_MS = 120_000;
 
@@ -214,6 +215,9 @@ export default function BuyerDashboard() {
 
         {/* ── Section 1: Overview Cards ── */}
         <OverviewCards overview={overviewQuery.data} isLoading={overviewQuery.isLoading} />
+
+        {/* ── Government Schemes ── */}
+        <SchemesDashboardWidget />
 
         {/* ── Section 2: Price Trends ── */}
         <PriceTrendChart

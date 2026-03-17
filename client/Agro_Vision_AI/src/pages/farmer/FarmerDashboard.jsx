@@ -47,6 +47,7 @@ import {
 import api from "../../api/axios";
 import { useAuth } from "../../context/AuthContext";
 import AdvisoryDashboardWidget from "../../components/publicAdvisory/AdvisoryDashboardWidget.jsx";
+import SchemesDashboardWidget from "../../components/schemes/SchemesDashboardWidget.jsx";
 
 const CACHE_PREFIX = "agv:dashboard:";
 const CACHE_TTL_MS = 1000 * 60 * 5;
@@ -1343,6 +1344,9 @@ const FarmerDashboard = () => {
             {errorMessage}
           </div>
         ) : null}
+
+        {/* ── Government Schemes ── */}
+        <SchemesDashboardWidget />
 
         <div className="grid xl:grid-cols-5 gap-6">
           <GlassCard className="xl:col-span-3 p-5 sm:p-6 space-y-5">

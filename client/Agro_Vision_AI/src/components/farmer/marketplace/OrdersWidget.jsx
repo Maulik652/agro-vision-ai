@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { getRecentOrders } from "../../../api/farmerMarketplaceApi";
 import { updateOrderStatus } from "../../../api/marketplaceApi";
+import useOrderStatusSocket from "../../../hooks/useOrderStatusSocket";
 
 const STATUS_CONFIG = {
   pending: { icon: Clock, color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-200", label: "Pending" },
@@ -58,6 +59,10 @@ function OrderRow({ order, onUpdate }) {
 
 export default function OrdersWidget({ compact = false, onTabSwitch }) {
   const qc = useQueryClient();
+
+  // Real-time order status updates from admin panel
+  useOrderStatusSocket({ queryKeys: ["farmerOrders", "farmerMarketSummary"], showToast: true });
+
   const { data, isLoading } = useQuery({
     queryKey: ["farmerOrders"],
     queryFn: () => getRecentOrders({ limit: compact ? 5 : 20 }),

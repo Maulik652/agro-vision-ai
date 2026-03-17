@@ -187,6 +187,26 @@ export const loginUser = async (req, res) => {
     user.lastLoginAt = new Date();
     await user.save();
 
+    // Check account status before issuing token
+    if (user.isDeleted) {
+      return res.status(403).json({
+        code: "ACCOUNT_DELETED",
+        message: "This account has been removed. Please contact admin."
+      });
+    }
+    if (user.status === "blocked") {
+      return res.status(403).json({
+        code: "ACCOUNT_BLOCKED",
+        message: "Your account has been blocked by admin. Please contact support."
+      });
+    }
+    if (user.status === "suspended") {
+      return res.status(403).json({
+        code: "ACCOUNT_SUSPENDED",
+        message: "Your account has been suspended. Please contact admin."
+      });
+    }
+
     const token = generateToken(user._id.toString(), user.role);
     res.cookie(AUTH_COOKIE_NAME, token, authCookieOptions);
 

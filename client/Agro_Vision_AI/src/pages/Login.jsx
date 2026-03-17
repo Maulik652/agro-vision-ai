@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Mail, Lock, Eye, EyeOff } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Mail, Lock, Eye, EyeOff, ShieldAlert } from "lucide-react";
 import api from "../api/axios";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -16,6 +16,16 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
   const [formError, setFormError] = useState("");
+  const [accountBanner, setAccountBanner] = useState(null); // { code, message }
+
+  // Read forced-logout reason set by axios interceptor
+  useEffect(() => {
+    const stored = localStorage.getItem("auth_error");
+    if (stored) {
+      try { setAccountBanner(JSON.parse(stored)); } catch { /* ignore */ }
+      localStorage.removeItem("auth_error");
+    }
+  }, []);
 
   const [form, setForm] = useState({
     email: "",
@@ -92,11 +102,21 @@ const Login = () => {
       } else if (role === "expert") {
         navigate("/expert/dashboard");
       } else if (role === "admin") {
-        navigate("/admin/dashboard");
+        navigate("/admin");
       } else {
         navigate("/");
       }
     } catch (error) {
+      const status = error?.response?.status;
+      const code = error?.response?.data?.code;
+      const serverMsg = error?.response?.data?.message;
+
+      // Account blocked / suspended / deleted — show prominent banner
+      if (status === 403 && code) {
+        setAccountBanner({ code, message: serverMsg });
+        return;
+      }
+
       const messages = getApiErrorMessages(error, "Login failed");
       const apiFieldErrors = getApiFieldErrors(error);
       const { _form, ...restFieldErrors } = apiFieldErrors;
@@ -135,6 +155,20 @@ const Login = () => {
         </div>
 
         <div className="space-y-4">
+
+          {/* Account blocked / suspended / deleted banner */}
+          {accountBanner && (
+            <div className="flex items-start gap-3 rounded-xl border border-red-300 bg-red-50 px-4 py-3">
+              <ShieldAlert size={18} className="text-red-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-red-800">
+                  {accountBanner.code === "ACCOUNT_DELETED" ? "Account Removed" :
+                   accountBanner.code === "ACCOUNT_BLOCKED" ? "Account Blocked" : "Account Suspended"}
+                </p>
+                <p className="text-xs text-red-600 mt-0.5">{accountBanner.message}</p>
+              </div>
+            </div>
+          )}
 
           {formError && (
             <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">

@@ -45,6 +45,30 @@ export const protect = async (req, res, next) => {
       return res.status(401).json({ message: "User not found" });
     }
 
+    // Hard-deleted users — force logout
+    if (req.user.isDeleted) {
+      return res.status(403).json({
+        code: "ACCOUNT_DELETED",
+        message: "Your account has been removed. Please contact admin."
+      });
+    }
+
+    // Blocked users — force logout
+    if (req.user.status === "blocked") {
+      return res.status(403).json({
+        code: "ACCOUNT_BLOCKED",
+        message: "Your account has been blocked by admin. Please contact support."
+      });
+    }
+
+    // Suspended users — force logout
+    if (req.user.status === "suspended") {
+      return res.status(403).json({
+        code: "ACCOUNT_SUSPENDED",
+        message: "Your account has been suspended. Please contact admin."
+      });
+    }
+
     next();
   } catch (error) {
     return res.status(401).json({

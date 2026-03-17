@@ -80,7 +80,18 @@ const userSchema = new mongoose.Schema(
   lastLoginAt: {
     type: Date,
     default: null
-  }
+  },
+
+  status: {
+    type: String,
+    enum: ["active", "suspended", "blocked"],
+    default: "active",
+  },
+
+  isDeleted: {
+    type: Boolean,
+    default: false,
+  },
 
 },
 { timestamps: true }

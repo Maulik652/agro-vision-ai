@@ -28,6 +28,7 @@ import communityRoutes from "./routes/communityRoutes.js";
 import schemeRoutes from "./routes/schemeRoutes.js";
 import fieldRoutes from "./routes/fieldRoutes.js";
 import { initializeSocketServer } from "./realtime/socketServer.js";
+import { seedAdminUser } from "./scripts/seedAdmin.js";
 import buyerDashboardRoutes from "./routes/buyerDashboardRoutes.js";
 import dashboardRoutes from "./routes/dashboardRoutes.js";
 import addressRoutes from "./routes/addressRoutes.js";
@@ -42,12 +43,13 @@ import publicAdvisoryRoutes from "./routes/publicAdvisoryRoutes.js";
 import reviewRoutes from "./routes/reviewRoutes.js";
 import scheduleRoutes from "./routes/scheduleRoutes.js";
 import farmerMarketplaceRoutes from "./routes/farmerMarketplaceRoutes.js";
+import adminRoutes from "./routes/adminRoutes.js";
 
 
 dotenv.config();
 
 /* CONNECT DATABASE */
-connectDB();
+connectDB().then(() => seedAdminUser()).catch(() => {});
 initializeRedisCache();
 
 const app = express();
@@ -114,6 +116,7 @@ app.use("/api/advisories/public", publicAdvisoryRoutes);
 app.use("/api/reviews", reviewRoutes);
 app.use("/api/schedule", scheduleRoutes);
 app.use("/api/farmer/marketplace", farmerMarketplaceRoutes);
+app.use("/api/admin", adminRoutes);
 /* HEALTH CHECK ROUTE */
 app.get("/", (req, res) => {
   res.send("API is running...");

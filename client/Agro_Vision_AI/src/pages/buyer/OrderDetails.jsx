@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 
 import { fetchOrderById } from "../../services/orderAPI.js";
+import useOrderStatusSocket from "../../hooks/useOrderStatusSocket.js";
 
 import OrderStatusBadge from "../../components/orders/OrderStatusBadge.jsx";
 import OrderTimeline    from "../../components/orders/OrderTimeline.jsx";
@@ -61,6 +62,9 @@ function SectionTitle({ icon: Icon, title }) {
 export default function OrderDetails() {
   const { orderId } = useParams();
   const navigate    = useNavigate();
+
+  // Real-time status update from admin panel
+  useOrderStatusSocket({ queryKeys: ["order", "buyer-orders"], showToast: true });
 
   const { data: order, isLoading, isError, refetch } = useQuery({
     queryKey: ["order", orderId],

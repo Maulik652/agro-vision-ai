@@ -11,6 +11,7 @@ import { fetchBuyerOrders } from "../../services/orderAPI.js";
 import useOrderStore from "../../store/orderStore.js";
 import OrderCard from "../../components/orders/OrderCard.jsx";
 import OrdersSkeleton from "../../components/orders/OrdersSkeleton.jsx";
+import useOrderStatusSocket from "../../hooks/useOrderStatusSocket.js";
 
 const FILTERS = [
   { value: "all",             label: "All Orders",  icon: ShoppingBag },
@@ -35,6 +36,9 @@ export default function Orders() {
   const showSuccess = searchParams.get("success") === "1";
   const { statusFilter, setStatusFilter } = useOrderStore();
   const [search, setSearch] = useState("");
+
+  // Real-time order status updates from admin panel
+  useOrderStatusSocket({ queryKeys: ["buyer-orders"], showToast: true });
 
   const { data: orders, isLoading, isError, refetch } = useQuery({
     queryKey: ["buyer-orders"],
