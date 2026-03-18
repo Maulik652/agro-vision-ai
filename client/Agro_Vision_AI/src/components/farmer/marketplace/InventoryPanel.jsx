@@ -1,7 +1,11 @@
 import { motion } from "framer-motion";
-import { Warehouse, Package, CheckCircle, PauseCircle, TrendingUp, Loader2 } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { Warehouse, Package, CheckCircle, PauseCircle, TrendingUp, Loader2, Zap } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useRef } from "react";
+import { io } from "socket.io-client";
 import { getInventory } from "../../../api/farmerMarketplaceApi";
+
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || "http://localhost:5000";
 
 const STATUS_STYLES = {
   active:  { bg: "bg-emerald-100", text: "text-emerald-700", border: "border-emerald-200", dot: "bg-emerald-500" },
@@ -13,12 +17,38 @@ const STATUS_STYLES = {
 const GRADE_COLORS = { A: "bg-emerald-500", B: "bg-blue-500", C: "bg-amber-500" };
 
 export default function InventoryPanel() {
+  const qc = useQueryClient();
+  const socketRef = useRef(null);
+
   const { data, isLoading } = useQuery({
     queryKey: ["farmerInventory"],
     queryFn: getInventory,
-    staleTime: 60000,
+    staleTime: 30000,
     retry: 1,
   });
+
+  // Real-time inventory updates via socket
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    const socket = io(SOCKET_URL, {
+      auth: { token },
+      transports: ["websocket", "polling"],
+      reconnectionAttempts: 5,
+    });
+    socketRef.current = socket;
+
+    const invalidate = () => {
+      qc.invalidateQueries({ queryKey: ["farmerInventory"] });
+      qc.invalidateQueries({ queryKey: ["farmerMarketSummary"] });
+    };
+
+    socket.on("inventory_update", invalidate);
+    // Also refresh on order events that affect stock
+    socket.on("new_order", invalidate);
+    socket.on("order_paid", invalidate);
+
+    return () => socket.disconnect();
+  }, [qc]);
 
   const inventory = data?.inventory || [];
   const stats = data?.stats || {};
@@ -48,6 +78,9 @@ export default function InventoryPanel() {
           <h3 className="text-base font-black text-slate-800">Inventory Management</h3>
           <p className="text-[11px] text-slate-500">Stock overview across all listings</p>
         </div>
+        <span className="ml-auto flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live
+        </span>
       </div>
 
       {/* Stats */}

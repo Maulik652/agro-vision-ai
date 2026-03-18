@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Eye, Share2, Heart, RefreshCw } from "lucide-react";
+import { ArrowLeft, Eye, Share2, Heart } from "lucide-react";
 import toast from "react-hot-toast";
 
 import CropGallery from "../../components/buyer/cropDetail/CropGallery";
@@ -21,6 +21,7 @@ import {
   addCropToCart, fetchFarmerDetail
 } from "../../api/cropDetailApi";
 import useCartStore from "../../store/cartStore.js";
+import useStockSocket from "../../hooks/useStockSocket.js";
 
 function Skeleton({ className }) {
   return <div className={`animate-pulse bg-slate-100 rounded-xl ${className}`} />;
@@ -30,17 +31,14 @@ function LoadingSkeleton() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
       <Skeleton className="h-5 w-40 mb-8" />
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        <div className="lg:col-span-8 space-y-6">
-          <Skeleton className="h-[420px] rounded-2xl" />
-          <div className="grid grid-cols-2 gap-4">
-            <Skeleton className="h-32" />
-            <Skeleton className="h-32" />
-          </div>
-          <Skeleton className="h-48" />
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="lg:col-span-8 space-y-5">
+          <Skeleton className="aspect-[4/3] w-full rounded-2xl" />
+          <Skeleton className="h-64 rounded-2xl" />
+          <Skeleton className="h-48 rounded-2xl" />
         </div>
         <div className="lg:col-span-4">
-          <Skeleton className="h-[500px] rounded-2xl" />
+          <Skeleton className="h-[520px] rounded-2xl" />
         </div>
       </div>
     </div>
@@ -86,6 +84,13 @@ export default function CropDetail() {
     }).catch(() => toast.error("Failed to load crop details"))
       .finally(() => setLoading(false));
   }, [cropId, navigate]);
+
+  useStockSocket(({ cropId: updatedId, quantity, outOfStock }) => {
+    if (updatedId === cropId) {
+      setCrop((prev) => prev ? { ...prev, quantity, status: outOfStock ? "sold" : prev.status } : prev);
+      if (outOfStock) toast("This crop is now out of stock", { icon: "⚠️" });
+    }
+  });
 
   const handleAddToCart = async (qty) => {
     setAddingCart(true);
@@ -152,21 +157,21 @@ export default function CropDetail() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#f6f8f4] via-[#eefbf1] to-[#f3f4ef]">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 lg:py-8">
 
-        {/* Top bar */}
-        <div className="flex items-center justify-between mb-6">
+        {/* Breadcrumb */}
+        <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-2 text-sm">
             <button onClick={() => navigate("/buyer/marketplace")}
               className="flex items-center gap-1.5 text-slate-500 hover:text-slate-800 transition-colors">
               <ArrowLeft size={15} /> Marketplace
             </button>
             <span className="text-slate-300">/</span>
-            <span className="text-slate-600 truncate max-w-[200px]">{crop.cropName}</span>
+            <span className="text-slate-600 truncate max-w-[180px] sm:max-w-xs">{crop.cropName}</span>
           </div>
           <div className="flex items-center gap-2">
             {crop.views != null && (
-              <span className="flex items-center gap-1.5 text-slate-400 text-xs">
+              <span className="hidden sm:flex items-center gap-1.5 text-slate-400 text-xs">
                 <Eye size={12} /> {crop.views.toLocaleString()} views
               </span>
             )}
@@ -174,7 +179,14 @@ export default function CropDetail() {
               className="p-2 rounded-xl bg-white border border-slate-200 text-slate-500 hover:text-slate-800 hover:border-slate-300 transition-all shadow-sm">
               <Share2 size={15} />
             </button>
-            <button onClick={() => setWishlisted(!wishlisted)}
+            <button
+              onClick={() => {
+                setWishlisted(!wishlisted);
+                queryClient.invalidateQueries({ queryKey: ["dashboard-favorite-crops"] });
+                toast(wishlisted ? "Removed from favorites" : "Added to favorites", {
+                  icon: wishlisted ? "💔" : "❤️", duration: 2000,
+                });
+              }}
               className={`p-2 rounded-xl border transition-all shadow-sm ${
                 wishlisted
                   ? "bg-red-50 border-red-200 text-red-500"
@@ -185,25 +197,36 @@ export default function CropDetail() {
           </div>
         </div>
 
-        {/* Main grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        {/* ── Main layout ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
-          {/* LEFT — 8 cols */}
-          <div className="lg:col-span-8 space-y-6">
+          {/* ── LEFT col (content) ── */}
+          <div className="lg:col-span-8 space-y-5">
 
-            {/* Gallery + Info */}
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-              <CropGallery images={images} cropName={crop.cropName} />
-              <CropInfo crop={crop} />
-            </div>
+            {/* Gallery — full width, aspect-ratio driven, no fixed height */}
+            <CropGallery images={images} cropName={crop.cropName} />
 
-            {/* Farmer Profile */}
+            {/* Crop info */}
+            <CropInfo crop={crop} />
+
+            {/* Farmer card */}
             <FarmerCard farmer={farmerData} crop={crop} onChat={() => setShowChat(true)} />
 
             {/* AI Insights */}
             {aiInsights && (
               <AIInsights insights={aiInsights} source={aiSource} cropName={crop.cropName} />
             )}
+
+            {/* Action panel — mobile only (shown inline before tabs) */}
+            <div className="lg:hidden">
+              <ActionPanel
+                crop={crop}
+                onAddToCart={handleAddToCart}
+                onBuyNow={handleBuyNow}
+                onChat={() => setShowChat(true)}
+                addingCart={addingCart}
+              />
+            </div>
 
             {/* Tabs */}
             <div>
@@ -239,42 +262,42 @@ export default function CropDetail() {
               </AnimatePresence>
             </div>
 
-            {/* Similar Crops */}
+            {/* Similar crops */}
             <SimilarCrops crops={similar} />
           </div>
 
-          {/* RIGHT — 4 cols */}
-          <div className="lg:col-span-4 space-y-5">
-            <ActionPanel
-              crop={crop}
-              onAddToCart={handleAddToCart}
-              onBuyNow={handleBuyNow}
-              onChat={() => setShowChat(true)}
-              addingCart={addingCart}
-            />
+          {/* ── RIGHT col (sticky sidebar) — desktop only ── */}
+          <div className="hidden lg:block lg:col-span-4">
+            <div className="sticky top-6 space-y-5">
+              <ActionPanel
+                crop={crop}
+                onAddToCart={handleAddToCart}
+                onBuyNow={handleBuyNow}
+                onChat={() => setShowChat(true)}
+                addingCart={addingCart}
+              />
 
-            {/* Trust badges */}
-            <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm">
-              <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-3">Buyer Protection</p>
-              <div className="space-y-2.5">
-                {[
-                  "Verified farmer listing",
-                  "Quality guaranteed or refund",
-                  "Secure payment processing",
-                  "AI-verified crop quality score",
-                ].map((text, i) => (
-                  <div key={i} className="flex items-center gap-2.5 text-slate-600 text-xs">
-                    <div className="w-4 h-4 rounded-full bg-green-100 flex items-center justify-center shrink-0">
-                      <span className="text-green-700 text-[9px] font-bold">✓</span>
+              {/* Trust badges */}
+              <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm">
+                <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-3">Buyer Protection</p>
+                <div className="space-y-2.5">
+                  {[
+                    "Verified farmer listing",
+                    "Quality guaranteed or refund",
+                    "Secure payment processing",
+                    "AI-verified crop quality score",
+                  ].map((text, i) => (
+                    <div key={i} className="flex items-center gap-2.5 text-slate-600 text-xs">
+                      <div className="w-4 h-4 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+                        <span className="text-green-700 text-[9px] font-bold">✓</span>
+                      </div>
+                      {text}
                     </div>
-                    {text}
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
 
-            {/* Price chart in sidebar on xl */}
-            <div className="hidden xl:block">
+              {/* Price chart in sidebar */}
               <PriceHistoryChart data={trendData} currentPrice={crop.price} />
             </div>
           </div>

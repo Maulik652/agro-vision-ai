@@ -60,6 +60,17 @@ const userSchema = new mongoose.Schema(
   qualification: String,
   experience: Number,
 
+  // Expert-specific fields
+  specialization:  { type: String, default: "", trim: true },
+  consultationFee: { type: Number, default: 500, min: 0 },
+  rating:          { type: Number, default: 0, min: 0, max: 5 },
+  reviewCount:     { type: Number, default: 0, min: 0 },
+  avatar:          { type: String, default: "" },
+  isAvailable:     { type: Boolean, default: true },
+  yearsExperience: { type: Number, default: 0, min: 0 },
+  languages:       [{ type: String }],
+  expertTags:      [{ type: String }],
+
   // Profile panel fields
   location: { type: String, default: "", trim: true },
   bio:      { type: String, default: "", maxlength: 500 },

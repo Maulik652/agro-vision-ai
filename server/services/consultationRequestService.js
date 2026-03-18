@@ -24,13 +24,46 @@ const emit = (event, payload) => {
 };
 
 /* ─── LIST AVAILABLE EXPERTS ─────────────────────────────────────────────── */
-export const fetchExperts = () =>
-  getOrSetCache("available_experts_list", CACHE_TTL, async () => {
-    const experts = await User.find({ role: "expert", isActive: { $ne: false } })
-      .select("name avatar specialization consultationFee rating reviewCount city state")
-      .lean();
-    return experts;
-  });
+export const fetchExperts = async ({ search, specialization, sortBy } = {}) => {
+  const filter = { role: "expert", isActive: { $ne: false }, status: { $ne: "suspended" } };
+
+  if (specialization && specialization !== "all") {
+    filter.specialization = { $regex: specialization, $options: "i" };
+  }
+  if (search) {
+    filter.$or = [
+      { name:           { $regex: search, $options: "i" } },
+      { specialization: { $regex: search, $options: "i" } },
+      { city:           { $regex: search, $options: "i" } },
+      { expertTags:     { $in: [new RegExp(search, "i")] } },
+    ];
+  }
+
+  const sortMap = {
+    rating:  { rating: -1 },
+    fee_low: { consultationFee: 1 },
+    fee_high:{ consultationFee: -1 },
+    newest:  { createdAt: -1 },
+  };
+  const sort = sortMap[sortBy] || { rating: -1 };
+
+  const experts = await User.find(filter)
+    .select("name avatar photo specialization consultationFee rating reviewCount city state isAvailable yearsExperience languages expertTags qualification experience")
+    .sort(sort)
+    .lean();
+
+  // Normalize fields — use photo as avatar fallback, set defaults
+  return experts.map(e => ({
+    ...e,
+    avatar:          e.avatar || e.photo || "",
+    specialization:  e.specialization || e.qualification || "Agriculture Expert",
+    consultationFee: e.consultationFee ?? 500,
+    rating:          e.rating ?? 0,
+    reviewCount:     e.reviewCount ?? 0,
+    isAvailable:     e.isAvailable !== false,
+    yearsExperience: e.yearsExperience || e.experience || 0,
+  }));
+};
 
 /* ─── CREATE CONSULTATION REQUEST ────────────────────────────────────────── */
 export const createConsultationRequest = async (userId, body) => {
@@ -53,13 +86,23 @@ export const createConsultationRequest = async (userId, body) => {
   // Auto-assign expert if not provided
   let resolvedExpertId = expertId;
   if (!resolvedExpertId) {
-    const expert = await User.findOne({ role: "expert", isActive: { $ne: false } })
+    const expert = await User.findOne({ role: "expert", isActive: { $ne: false }, status: { $ne: "suspended" } })
       .sort({ rating: -1 })
       .select("_id")
       .lean();
     if (!expert) throw Object.assign(new Error("No experts available"), { status: 503 });
     resolvedExpertId = expert._id;
+  } else {
+    // Verify the selected expert exists and is active
+    const expert = await User.findOne({ _id: resolvedExpertId, role: "expert", isActive: { $ne: false } })
+      .select("_id")
+      .lean();
+    if (!expert) throw Object.assign(new Error("Selected expert not found or unavailable"), { status: 404 });
   }
+
+  // Get requester info for notification
+  const requester = await User.findById(userId).select("name role").lean();
+  const requesterLabel = requester?.role === "buyer" ? "buyer" : "farmer";
 
   const consultation = await Consultation.create({
     user: userId,
@@ -93,7 +136,7 @@ export const createConsultationRequest = async (userId, body) => {
     user: resolvedExpertId,
     type: "system",
     title: "New Consultation Request",
-    message: `You have a new consultation request for ${cropType} from a farmer.`,
+    message: `You have a new consultation request for ${cropType} from a ${requesterLabel}${requester?.name ? ` (${requester.name})` : ""}.`,
     priority: "high",
     data: { consultationId: consultation._id },
   });

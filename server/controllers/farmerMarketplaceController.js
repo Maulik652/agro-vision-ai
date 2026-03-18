@@ -111,9 +111,9 @@ export const getMarketInsights = async (req, res) => {
 /* ── 5. BUYER REQUESTS ── */
 export const getBuyerRequests = async (req, res) => {
   try {
-    const offers = await CropOffer.find({ farmer: req.user._id, status: "pending" })
+    const offers = await CropOffer.find({ farmer: req.user._id })
       .populate("buyer", "name email phone").populate("cropListing", "cropName price quantityUnit location")
-      .sort({ createdAt: -1 }).limit(20).lean();
+      .sort({ createdAt: -1 }).limit(50).lean();
     return res.json({ success: true, requests: offers });
   } catch (err) { return res.status(500).json({ success: false, message: err.message }); }
 };
@@ -122,9 +122,14 @@ export const getBuyerRequests = async (req, res) => {
 export const getFarmerRecentOrders = async (req, res) => {
   try {
     const page = Math.max(toNum(req.query.page, 1), 1);
-    const limit = Math.min(toNum(req.query.limit, 10), 50);
+    const limit = Math.min(toNum(req.query.limit, 20), 50);
     const [orders, total] = await Promise.all([
-      CropOrder.find({ farmer: req.user._id }).populate("buyer", "name email").sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit).lean(),
+      CropOrder.find({ farmer: req.user._id })
+        .populate("buyer", "name email phone")
+        .sort({ createdAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .lean(),
       CropOrder.countDocuments({ farmer: req.user._id }),
     ]);
     return res.json({ success: true, orders, total, page, pages: Math.ceil(total / limit) });
@@ -135,7 +140,9 @@ export const getFarmerRecentOrders = async (req, res) => {
 export const getFarmerMarketReviews = async (req, res) => {
   try {
     const Review = (await import("../models/Review.js")).default;
-    const reviews = await Review.find({ expert: req.user._id }).populate("farmer", "name").sort({ createdAt: -1 }).limit(10).lean();
+    const reviews = await Review.find({ targetUser: req.user._id, status: "approved" })
+      .populate("reviewer", "name")
+      .sort({ createdAt: -1 }).limit(20).lean();
     const avgRating = reviews.length ? +(reviews.reduce((s, r) => s + (r.rating || 0), 0) / reviews.length).toFixed(1) : 0;
     return res.json({ success: true, reviews, avgRating, total: reviews.length });
   } catch (err) { return res.status(500).json({ success: false, message: err.message }); }
@@ -213,11 +220,57 @@ export const aiSellingAssistant = async (req, res) => {
   } catch (err) { return res.status(500).json({ success: false, message: err.message }); }
 };
 
-/* ── 12. NOTIFICATIONS ── */
+/* ── 12. UPDATE CROP ORDER STATUS ── */
+export const updateCropOrderStatus = async (req, res) => {
+  try {
+    const allowed = ["confirmed", "processing", "shipped", "delivered", "completed", "cancelled"];
+    const status = String(req.body.status || "").trim();
+    if (!allowed.includes(status))
+      return res.status(400).json({ success: false, message: "Invalid status." });
+
+    const order = await CropOrder.findOneAndUpdate(
+      { _id: req.params.id, farmer: req.user._id },
+      { $set: { status } },
+      { new: true, runValidators: true }
+    ).populate("buyer", "_id name email phone").lean();
+
+    if (!order) return res.status(404).json({ success: false, message: "Order not found." });
+
+    // Real-time notify buyer and farmer
+    const { getSocketServer } = await import("../realtime/socketServer.js");
+    const io = getSocketServer();
+    if (io) {
+      const payload = { orderId: order._id, orderStatus: status, order, emittedAt: new Date().toISOString() };
+      const buyerId = order.buyer?._id?.toString() ?? order.buyer?.toString();
+      if (buyerId) io.to(`user:${buyerId}`).emit("order_update", payload);
+      io.to(`user:${req.user._id.toString()}`).emit("order_update", payload);
+    }
+
+    // Persist cancellation notification for buyer
+    if (status === "cancelled") {
+      const buyerId = order.buyer?._id?.toString() ?? order.buyer?.toString();
+      if (buyerId) {
+        const Notification = (await import("../models/Notification.js")).default;
+        await Notification.create({
+          user: buyerId,
+          type: "order_cancelled",
+          title: `Order Cancelled — ${order.cropName}`,
+          message: `Your order for ${order.cropName} has been cancelled by the farmer.`,
+          data: { orderId: order._id },
+          priority: "high",
+        }).catch(() => {});
+      }
+    }
+
+    return res.json({ success: true, order });
+  } catch (err) { return res.status(500).json({ success: false, message: err.message }); }
+};
+
+/* ── 13. NOTIFICATIONS ── */
 export const getFarmerNotifications = async (req, res) => {
   try {
     const Notification = (await import("../models/Notification.js")).default;
-    const notifications = await Notification.find({ recipient: req.user._id }).sort({ createdAt: -1 }).limit(20).lean();
+    const notifications = await Notification.find({ user: req.user._id }).sort({ createdAt: -1 }).limit(30).lean();
     return res.json({ success: true, notifications, unread: notifications.filter(n => !n.read).length });
   } catch (err) { return res.status(500).json({ success: false, message: err.message }); }
 };
@@ -225,7 +278,7 @@ export const getFarmerNotifications = async (req, res) => {
 export const markNotificationRead = async (req, res) => {
   try {
     const Notification = (await import("../models/Notification.js")).default;
-    await Notification.updateMany({ recipient: req.user._id, read: false }, { read: true });
+    await Notification.updateMany({ user: req.user._id, read: false }, { read: true });
     return res.json({ success: true });
   } catch (err) { return res.status(500).json({ success: false, message: err.message }); }
 };

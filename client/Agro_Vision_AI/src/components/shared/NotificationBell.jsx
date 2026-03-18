@@ -1,10 +1,13 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Bell, Check, CheckCheck, Trash2, X, Loader2, AlertTriangle, CloudSun, TrendingUp, Bug, Sprout, ShieldAlert, Megaphone } from "lucide-react";
+import { Bell, Check, CheckCheck, Trash2, X, Loader2, AlertTriangle, CloudSun, TrendingUp, Bug, Sprout, ShieldAlert, Megaphone, Tag } from "lucide-react";
 import { getNotifications, markNotificationRead, markAllNotificationsRead, deleteNotification } from "../../api/farmerApi";
+import useOfferSocket from "../../hooks/useOfferSocket";
+import toast from "react-hot-toast";
 
 const ICON_MAP = {
   weather: CloudSun, pest: Bug, market: TrendingUp, crop: Sprout,
   alert: AlertTriangle, security: ShieldAlert, announcement: Megaphone,
+  offer_accepted: Tag, offer_rejected: Tag,
 };
 
 const NotificationBell = () => {
@@ -24,6 +27,22 @@ const NotificationBell = () => {
   };
 
   useEffect(() => { fetchNotifs(); }, []);
+
+  // Real-time offer notifications for buyer
+  useOfferSocket({
+    offer_accepted: (payload) => {
+      fetchNotifs();
+      toast.success(payload.message || "Your offer was accepted!");
+    },
+    offer_rejected: (payload) => {
+      fetchNotifs();
+      toast.error(payload.message || "Your offer was rejected.");
+    },
+    offer_counter: (payload) => {
+      fetchNotifs();
+      toast(payload.message || "Farmer sent a counter offer", { icon: "🔄" });
+    },
+  });
 
   // Close on outside click
   useEffect(() => {

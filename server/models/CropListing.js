@@ -136,7 +136,7 @@ const cropListingSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["active", "sold", "expired"],
+      enum: ["active", "sold", "expired", "paused"],
       default: "active",
       index: true
     },

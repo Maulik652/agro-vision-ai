@@ -9,6 +9,7 @@ import Address from "../models/Address.js";
 import CropListing from "../models/CropListing.js";
 import { deleteCache } from "../config/redis.js";
 import { emitAnalyticsUpdate } from "../realtime/analyticsNamespace.js";
+import { emitStockUpdate, emitInventoryUpdate } from "../realtime/socketServer.js";
 
 const PLATFORM_FEE_RATE = 0.015; // 1.5%
 const TAX_RATE          = 0.05;  // 5%
@@ -149,6 +150,75 @@ export const createOrdersFromCart = async (buyerId, { addressId, deliveryType, p
 
   const orders = await Promise.all(orderDocs.map((doc) => new Order(doc).save()));
 
+  // Notify each farmer in real-time that a new paid order arrived
+  const io = getSocketServer();
+  if (io) {
+    for (const order of orders) {
+      io.to(`user:${order.farmer.toString()}`).emit("new_order", {
+        orderId: order._id,
+        parentOrderId: order.parentOrderId,
+        buyerId: order.buyer.toString(),
+        totalAmount: order.totalAmount,
+        message: "New order received — payment pending",
+      });
+    }
+  }
+
+  // ── Deduct stock from each CropListing atomically ──────────────────
+  // Collect total ordered qty per listing across all cart items
+  const stockDeductions = {};
+  for (const item of cart.items) {
+    const cid = item.crop?.toString() ?? item.cropId?.toString();
+    if (!cid) continue;
+    stockDeductions[cid] = (stockDeductions[cid] ?? 0) + item.quantity;
+  }
+
+  // Pre-flight stock check — reject if any listing has insufficient stock
+  for (const [cropId, deductQty] of Object.entries(stockDeductions)) {
+    const listing = await CropListing.findById(cropId).select("quantity cropName status").lean();
+    if (!listing || listing.status === "sold" || listing.quantity < deductQty) {
+      throw Object.assign(
+        new Error(`"${listing?.cropName ?? "A crop"}" is out of stock or has insufficient quantity`),
+        { status: 400 }
+      );
+    }
+  }
+
+  for (const [cropId, deductQty] of Object.entries(stockDeductions)) {
+    // Atomically decrement; clamp to 0 using $max
+    const updated = await CropListing.findByIdAndUpdate(
+      cropId,
+      [
+        {
+          $set: {
+            quantity: { $max: [{ $subtract: ["$quantity", deductQty] }, 0] },
+          },
+        },
+        {
+          $set: {
+            status:   { $cond: [{ $lte: ["$quantity", 0] }, "sold", "$status"] },
+            isActive: { $cond: [{ $lte: ["$quantity", 0] }, false, "$isActive"] },
+          },
+        },
+      ],
+      { new: true }
+    ).lean();
+
+    if (updated) {
+      const outOfStock = updated.quantity <= 0;
+      emitStockUpdate(cropId, updated.quantity, outOfStock);
+      // Notify the farmer's inventory panel in real-time
+      emitInventoryUpdate(updated.farmer?.toString() ?? updated.farmer, {
+        cropId,
+        cropName: updated.cropName,
+        quantity: updated.quantity,
+        status: updated.status,
+        event: outOfStock ? "sold" : "stock_reduced",
+      });
+    }
+  }
+  // ───────────────────────────────────────────────────────────────────
+
   // Clear cart after order creation
   await Cart.findOneAndUpdate(
     { buyer: buyerId },
@@ -162,7 +232,7 @@ export const createOrdersFromCart = async (buyerId, { addressId, deliveryType, p
 
 /** Mark all sub-orders under a parentOrderId as paid */
 export const markOrdersPaid = async (parentOrderId, paymentId) => {
-  const orders = await Order.find({ parentOrderId }).select("buyer").lean();
+  const orders = await Order.find({ parentOrderId }).select("buyer farmer totalAmount").lean();
   await Order.updateMany(
     { parentOrderId },
     { $set: { paymentStatus: "paid", orderStatus: "paid", paymentId } }
@@ -173,6 +243,19 @@ export const markOrdersPaid = async (parentOrderId, paymentId) => {
   // Invalidate analytics cache + emit real-time update
   await Promise.all(buyerIds.map((id) => deleteCache(`analytics_buyer_${id}_30d_all`)));
   buyerIds.forEach((id) => emitAnalyticsUpdate(id, "order", { event: "payment_confirmed", parentOrderId }));
+
+  // Notify each farmer that payment is confirmed
+  const io = getSocketServer();
+  if (io) {
+    for (const order of orders) {
+      io.to(`user:${order.farmer.toString()}`).emit("order_paid", {
+        orderId: order._id,
+        parentOrderId,
+        totalAmount: order.totalAmount,
+        message: "Payment confirmed — order is now active",
+      });
+    }
+  }
 };
 
 /** Get single order by orderId string */

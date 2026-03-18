@@ -5,11 +5,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Search, SlidersHorizontal, X, Leaf, ShoppingCart, MessageCircle,
   TrendingUp, TrendingDown, Star, MapPin, Package, ChevronLeft,
-  ChevronRight, Zap, BarChart2, Filter, RefreshCw, Eye, Award
+  ChevronRight, Zap, BarChart2, Filter, RefreshCw, Eye, Award, AlertCircle
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { searchCrops, getHighDemandCrops, addToCart } from "../../api/marketplaceApi";
 import useCartStore from "../../store/cartStore.js";
+import useStockSocket from "../../hooks/useStockSocket.js";
 
 const SORT_OPTIONS = [
   { value: "latest",        label: "Latest" },
@@ -49,6 +50,7 @@ const demandBarColor = (score) =>
 function CropCard({ crop, onAddToCart, onChat, onView }) {
   const [imgErr, setImgErr] = useState(false);
   const demand = crop.aiSellReadiness ?? 60;
+  const outOfStock = crop.quantity <= 0 || crop.status === "sold";
 
   return (
     <motion.div
@@ -56,10 +58,14 @@ function CropCard({ crop, onAddToCart, onChat, onView }) {
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.96 }}
-      whileHover={{ y: -4 }}
+      whileHover={{ y: outOfStock ? 0 : -4 }}
       transition={{ duration: 0.22 }}
-      className="group relative bg-white border border-slate-100 rounded-2xl overflow-hidden hover:border-green-300 hover:shadow-md transition-all duration-300 cursor-pointer"
-      onClick={() => onView(crop.id)}
+      className={`group relative bg-white border rounded-2xl overflow-hidden transition-all duration-300 cursor-pointer ${
+        outOfStock
+          ? "border-slate-200 opacity-70"
+          : "border-slate-100 hover:border-green-300 hover:shadow-md"
+      }`}
+      onClick={() => !outOfStock && onView(crop.id)}
     >
       {/* image */}
       <div className="relative h-44 overflow-hidden bg-slate-100">
@@ -67,9 +73,19 @@ function CropCard({ crop, onAddToCart, onChat, onView }) {
           src={imgErr || !crop.image ? PLACEHOLDER_IMG : crop.image}
           alt={crop.cropName}
           onError={() => setImgErr(true)}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          className={`w-full h-full object-cover transition-transform duration-500 ${!outOfStock && "group-hover:scale-105"}`}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent" />
+
+        {/* Out of stock overlay */}
+        {outOfStock && (
+          <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+            <span className="px-3 py-1.5 rounded-full bg-red-600 text-white text-xs font-bold flex items-center gap-1.5">
+              <AlertCircle size={12} /> Out of Stock
+            </span>
+          </div>
+        )}
+
         <div className="absolute top-3 left-3 flex gap-1.5 flex-wrap">
           {crop.qualityType === "organic" && (
             <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-semibold backdrop-blur-sm">
@@ -80,7 +96,7 @@ function CropCard({ crop, onAddToCart, onChat, onView }) {
             Grade {crop.grade}
           </span>
         </div>
-        {crop.negotiable && (
+        {crop.negotiable && !outOfStock && (
           <span className="absolute top-3 right-3 px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-[10px] font-semibold backdrop-blur-sm">
             Negotiable
           </span>
@@ -108,9 +124,9 @@ function CropCard({ crop, onAddToCart, onChat, onView }) {
         </div>
 
         <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-1 text-xs text-slate-500">
+          <div className={`flex items-center gap-1 text-xs font-medium ${outOfStock ? "text-red-500" : "text-slate-500"}`}>
             <Package size={11} />
-            <span>{crop.quantity?.toLocaleString()} {crop.quantityUnit ?? "kg"}</span>
+            <span>{outOfStock ? "Out of stock" : `${crop.quantity?.toLocaleString()} ${crop.quantityUnit ?? "kg"}`}</span>
           </div>
           <div className={`flex items-center gap-1 text-xs font-medium ${demandColor(demand)}`}>
             {demand >= 50 ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
@@ -139,10 +155,15 @@ function CropCard({ crop, onAddToCart, onChat, onView }) {
 
         <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
           <button
-            onClick={() => onAddToCart(crop)}
-            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-green-700 hover:bg-green-800 text-white text-xs font-semibold transition-all"
+            onClick={() => !outOfStock && onAddToCart(crop)}
+            disabled={outOfStock}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold transition-all ${
+              outOfStock
+                ? "bg-slate-100 text-slate-400 cursor-not-allowed"
+                : "bg-green-700 hover:bg-green-800 text-white"
+            }`}
           >
-            <ShoppingCart size={13} /> Add to Cart
+            <ShoppingCart size={13} /> {outOfStock ? "Out of Stock" : "Add to Cart"}
           </button>
           <button
             onClick={() => onChat(crop)}
@@ -346,6 +367,17 @@ export default function Marketplace() {
       .then((data) => setTrending(Array.isArray(data) ? data : data?.listings ?? []))
       .catch(() => {});
   }, []);
+
+  // Real-time stock updates via socket
+  useStockSocket(({ cropId, quantity, outOfStock }) => {
+    setCrops((prev) =>
+      prev.map((c) =>
+        (c.id ?? c._id) === cropId
+          ? { ...c, quantity, status: outOfStock ? "sold" : c.status }
+          : c
+      )
+    );
+  });
 
   const handleFilterChange = (key, value) => setFilters((prev) => ({ ...prev, [key]: value }));
   const handleReset = () => setFilters(DEFAULT_FILTERS);

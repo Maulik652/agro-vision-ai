@@ -973,9 +973,9 @@ const WeatherIntelligence = () => {
           </div>
 
           <div className="mt-4 flex flex-wrap gap-2 text-xs font-medium text-[#245C76]">
-            <span className="weather-badge rounded-full px-3 py-1">GET /api/weather/current</span>
-            <span className="weather-badge rounded-full px-3 py-1">GET /api/weather/forecast</span>
-            <span className="weather-badge rounded-full px-3 py-1">GET /api/weather/analysis</span>
+            <span className="weather-badge rounded-full px-3 py-1">Real-time Data</span>
+            <span className="weather-badge rounded-full px-3 py-1">7-Day Forecast</span>
+            <span className="weather-badge rounded-full px-3 py-1">AI Farm Insights</span>
           </div>
         </Motion.section>
 

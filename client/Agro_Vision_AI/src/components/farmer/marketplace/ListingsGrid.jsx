@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Package, Plus, Loader2, RefreshCcw, ChevronLeft, ChevronRight } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -10,6 +10,9 @@ const stagger = { hidden: {}, visible: { transition: { staggerChildren: 0.06 } }
 export default function ListingsGrid({ filters = {}, onAddNew, onListingChanged }) {
   const [page, setPage] = useState(1);
   const qc = useQueryClient();
+
+  // Reset to page 1 whenever filters change
+  useEffect(() => { setPage(1); }, [filters.search, filters.category, filters.status, filters.sortBy]);
 
   const params = {
     page,
@@ -82,7 +85,13 @@ export default function ListingsGrid({ filters = {}, onAddNew, onListingChanged 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-sm font-semibold text-slate-600">{total} listing{total !== 1 ? "s" : ""} {isFetching && <Loader2 size={12} className="inline animate-spin ml-1 text-slate-400" />}</p>
+        <p className="text-sm font-semibold text-slate-600">
+          {total} listing{total !== 1 ? "s" : ""}
+          {(filters.search || filters.category !== "All" || filters.status !== "all") && (
+            <span className="ml-1 text-xs font-normal text-slate-400">(filtered)</span>
+          )}
+          {isFetching && <Loader2 size={12} className="inline animate-spin ml-1 text-slate-400" />}
+        </p>
         <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={onAddNew} className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 transition">
           <Plus size={13} /> Sell Crop
         </motion.button>

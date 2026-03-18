@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
 import { Activity, Clock } from "lucide-react";
@@ -7,6 +7,7 @@ import { Activity, Clock } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { connectBuyerDashboardSocket } from "../../realtime/dashboardSocket";
 import { useBuyerDashboardStore } from "../../store/buyerDashboardStore";
+import useOfferSocket from "../../hooks/useOfferSocket";
 
 import {
   fetchDashboardAIInsights,
@@ -45,6 +46,7 @@ const greetingByHour = () => {
 export default function BuyerDashboard() {
   const { user } = useAuth();
   const socketRef = useRef(null);
+  const qc = useQueryClient();
 
   const {
     selectedCrop,
@@ -56,6 +58,54 @@ export default function BuyerDashboard() {
     setSocketConnected,
     pushRealtimeNotification
   } = useBuyerDashboardStore();
+
+  // Real-time offer/order events → refresh relevant dashboard sections
+  useOfferSocket({
+    order_update: (payload) => {
+      qc.invalidateQueries({ queryKey: ["dashboard-recent-orders"] });
+      qc.invalidateQueries({ queryKey: ["dashboard-overview"] });
+      const status = payload?.orderStatus ?? payload?.order?.orderStatus;
+      if (status === "cancelled") {
+        const cropName = payload?.order?.items?.[0]?.cropName ?? payload?.order?.cropName ?? "your order";
+        pushRealtimeNotification({
+          type: "order_cancelled",
+          title: "Order Cancelled",
+          message: `Your order for ${cropName} was cancelled by the farmer.`,
+          priority: "high",
+          createdAt: new Date().toISOString(),
+        });
+        qc.invalidateQueries({ queryKey: ["dashboard-notifications"] });
+      }
+    },
+    offer_accepted: (payload) => {
+      pushRealtimeNotification({
+        type: "offer_accepted",
+        title: `Offer Accepted — ${payload.cropName || "Crop"}`,
+        message: payload.message || `Your offer of ₹${payload.offerPrice} was accepted!`,
+        priority: "high",
+        createdAt: new Date().toISOString(),
+      });
+      qc.invalidateQueries({ queryKey: ["dashboard-notifications"] });
+    },
+    offer_rejected: (payload) => {
+      pushRealtimeNotification({
+        type: "offer_rejected",
+        title: `Offer Rejected — ${payload.cropName || "Crop"}`,
+        message: payload.message || "Your offer was rejected by the farmer.",
+        priority: "normal",
+        createdAt: new Date().toISOString(),
+      });
+      qc.invalidateQueries({ queryKey: ["dashboard-notifications"] });
+    },
+    new_order: () => {
+      qc.invalidateQueries({ queryKey: ["dashboard-recent-orders"] });
+      qc.invalidateQueries({ queryKey: ["dashboard-top-farmers"] });
+    },
+    order_paid: () => {
+      qc.invalidateQueries({ queryKey: ["dashboard-recent-orders"] });
+      qc.invalidateQueries({ queryKey: ["dashboard-overview"] });
+    },
+  });
 
   const overviewQuery = useQuery({
     queryKey: ["dashboard-overview"],
@@ -127,10 +177,12 @@ export default function BuyerDashboard() {
     socket.on("disconnect", () => setSocketConnected(false));
 
     socket.on("order_update", (payload = {}) => {
+      qc.invalidateQueries({ queryKey: ["dashboard-recent-orders"] });
+      qc.invalidateQueries({ queryKey: ["dashboard-overview"] });
       pushRealtimeNotification({
         type: "order_update",
         title: "Order Updated",
-        message: `Order ${payload.order?.orderId || ""} → ${payload.order?.status || "updated"}.`,
+        message: `Order ${payload.order?.orderId || ""} → ${payload.order?.orderStatus || payload.orderStatus || "updated"}.`,
         priority: "normal",
         createdAt: payload.emittedAt
       });

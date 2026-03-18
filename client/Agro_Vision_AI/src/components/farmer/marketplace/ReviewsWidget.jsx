@@ -64,9 +64,9 @@ export default function ReviewsWidget({ compact = false }) {
               <div className="flex items-start justify-between gap-2 mb-1.5">
                 <div className="flex items-center gap-2">
                   <div className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-100 text-xs font-black text-emerald-700">
-                    {(r.farmer?.name || r.reviewer?.name || "U").charAt(0).toUpperCase()}
+                    {(r.reviewer?.name || "U").charAt(0).toUpperCase()}
                   </div>
-                  <span className="text-xs font-bold text-slate-700">{r.farmer?.name || r.reviewer?.name || "User"}</span>
+                  <span className="text-xs font-bold text-slate-700">{r.reviewer?.name || "Buyer"}</span>
                 </div>
                 <StarRow rating={r.rating || 0} />
               </div>

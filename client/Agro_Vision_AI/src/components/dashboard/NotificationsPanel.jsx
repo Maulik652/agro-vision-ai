@@ -1,11 +1,17 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { Bell, CheckCheck, Radio } from "lucide-react";
+import { Bell, CheckCheck, Radio, Tag, XCircle } from "lucide-react";
 
 const PRIORITY_CONFIG = {
   high:     { border: "border-l-red-400",     bg: "bg-red-50/60",    badge: "bg-red-100 text-red-700" },
   critical: { border: "border-l-red-500",     bg: "bg-red-50/60",    badge: "bg-red-100 text-red-700" },
   normal:   { border: "border-l-green-500",   bg: "bg-white",        badge: "bg-green-50 text-green-700" },
   low:      { border: "border-l-slate-300",   bg: "bg-slate-50/60",  badge: "bg-slate-100 text-slate-500" }
+};
+
+const TYPE_ICON = {
+  offer_accepted: { icon: Tag,     color: "text-emerald-600" },
+  offer_rejected: { icon: XCircle, color: "text-red-500"     },
+  order_cancelled:{ icon: XCircle, color: "text-red-500"     },
 };
 
 const fmtTime = (d) => {
@@ -45,13 +51,15 @@ const NotificationsPanel = ({ notifications, isLoading, realtimeNotifications, i
           ))}
         </div>
       ) : merged.length ? (
-        <ul className="space-y-2 max-h-96 overflow-y-auto pr-1">
+          <ul className="space-y-2 max-h-96 overflow-y-auto pr-1">
           <AnimatePresence initial={false}>
             {merged.slice(0, 15).map((row) => {
               const cfg = PRIORITY_CONFIG[row.priority] || PRIORITY_CONFIG.normal;
+              const typeInfo = TYPE_ICON[row.type];
+              const TypeIcon = typeInfo?.icon;
               return (
                 <motion.li
-                  key={String(row.id)}
+                  key={String(row.id || row._id)}
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 20 }}
@@ -59,9 +67,12 @@ const NotificationsPanel = ({ notifications, isLoading, realtimeNotifications, i
                   className={`rounded-xl border-l-4 p-3.5 text-sm ${cfg.border} ${cfg.bg}`}
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-slate-900 truncate">{row.title}</p>
-                      <p className="mt-0.5 text-slate-600 text-xs leading-relaxed">{row.message}</p>
+                    <div className="flex items-start gap-2 flex-1 min-w-0">
+                      {TypeIcon && <TypeIcon size={14} className={`${typeInfo.color} shrink-0 mt-0.5`} />}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-slate-900 truncate">{row.title}</p>
+                        <p className="mt-0.5 text-slate-600 text-xs leading-relaxed">{row.message}</p>
+                      </div>
                     </div>
                     <div className="flex shrink-0 flex-col items-end gap-1.5">
                       <span className={`rounded-full px-2 py-0.5 text-xs font-semibold capitalize ${cfg.badge}`}>

@@ -26,8 +26,7 @@ export default function CropGallery({ images = [], cropName = "Crop" }) {
     <>
       <div className="space-y-3">
         {/* Main image */}
-        <div className="relative overflow-hidden rounded-2xl bg-slate-100 border border-slate-200 group shadow-sm"
-          style={{ height: 380 }}>
+        <div className="relative overflow-hidden rounded-2xl bg-slate-100 border border-slate-200 group shadow-sm aspect-[4/3] w-full">
           <AnimatePresence mode="wait">
             <motion.img
               key={active}

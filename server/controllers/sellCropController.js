@@ -15,6 +15,8 @@ import {
   getHarvestInsights,
   getDemandIndicators,
 } from "../services/sellCropService.js";
+import Notification from "../models/Notification.js";
+import { getSocketServer } from "../realtime/socketServer.js";
 
 const sanitize = (v) => String(v || "").trim().slice(0, 200);
 const toNumber = (v, fb = 0) => {
@@ -26,8 +28,9 @@ const toNumber = (v, fb = 0) => {
 
 export const farmerMyListings = async (req, res) => {
   try {
-    const listings = await getMyListings(req.user._id);
-    return res.status(200).json({ success: true, listings });
+    const { search, category, status, sortBy, page = 1, limit = 9 } = req.query;
+    const result = await getMyListings(req.user._id, { search, category, status, sortBy, page, limit });
+    return res.status(200).json({ success: true, ...result });
   } catch (err) {
     return res.status(500).json({ success: false, message: err.message });
   }
@@ -90,6 +93,29 @@ export const submitOffer = async (req, res) => {
       message: sanitize(req.body.message),
     });
 
+    // Notify farmer in real-time that a new offer arrived
+    const io = getSocketServer();
+    if (io) {
+      io.to(`user:${req.body.farmer}`).emit("new_offer", {
+        offerId: offer._id,
+        buyerName: req.user.name || "A buyer",
+        offerPrice,
+        quantity,
+        cropListingId: req.body.cropListing,
+        message: `New offer of ₹${offerPrice} received`,
+      });
+    }
+
+    // Persist notification for farmer
+    await Notification.create({
+      user: req.body.farmer,
+      type: "new_offer",
+      title: `New Offer — ₹${offerPrice}`,
+      message: `${req.user.name || "A buyer"} made an offer of ₹${offerPrice} for ${quantity} ${req.body.quantityUnit || "quintal"}`,
+      data: { offerId: offer._id, cropListingId: req.body.cropListing, offerPrice, quantity },
+      priority: "high",
+    }).catch(() => {});
+
     return res.status(201).json({ success: true, offer });
   } catch (err) {
     return res.status(500).json({ success: false, message: err.message });
@@ -129,6 +155,69 @@ export const farmerRespondOffer = async (req, res) => {
     );
 
     if (!offer) return res.status(404).json({ success: false, message: "Offer not found or already resolved." });
+
+    const io = getSocketServer();
+    const buyerId = offer.buyer?._id?.toString() ?? offer.buyer?.toString();
+    const farmerId = req.user._id.toString();
+    const cropName = offer.cropListing?.cropName ?? "crop";
+
+    // ── Notify buyer via socket ──────────────────────────────────────
+    if (io && buyerId) {
+      if (action === "accept") {
+        io.to(`user:${buyerId}`).emit("offer_accepted", {
+          offerId: offer._id,
+          cropListingId: offer.cropListing?._id ?? offer.cropListing,
+          offerPrice: offer.offerPrice,
+          cropName,
+          message: `Your offer of ₹${offer.offerPrice} for ${cropName} was accepted!`,
+        });
+      } else if (action === "reject") {
+        io.to(`user:${buyerId}`).emit("offer_rejected", {
+          offerId: offer._id,
+          cropListingId: offer.cropListing?._id ?? offer.cropListing,
+          cropName,
+          message: `Your offer for ${cropName} was rejected by the farmer.`,
+        });
+      } else if (action === "negotiate") {
+        io.to(`user:${buyerId}`).emit("offer_counter", {
+          offerId: offer._id,
+          cropListingId: offer.cropListing?._id ?? offer.cropListing,
+          counterPrice: offer.counterPrice,
+          cropName,
+          message: `Farmer countered your offer for ${cropName} at ₹${offer.counterPrice}.`,
+        });
+      }
+    }
+
+    // ── Notify farmer's own socket (refresh offers list) ────────────
+    if (io) {
+      io.to(`user:${farmerId}`).emit("offer_responded", {
+        offerId: offer._id,
+        action,
+        cropName,
+      });
+    }
+
+    // ── Persist notification for buyer ──────────────────────────────
+    if (buyerId && action !== "negotiate") {
+      const notifType = action === "accept" ? "offer_accepted" : "offer_rejected";
+      const notifTitle = action === "accept"
+        ? `Offer Accepted — ${cropName}`
+        : `Offer Rejected — ${cropName}`;
+      const notifMsg = action === "accept"
+        ? `Your offer of ₹${offer.offerPrice}/${offer.quantityUnit} for ${cropName} has been accepted by the farmer.`
+        : `Your offer for ${cropName} was rejected. You can make a new offer or browse other listings.`;
+
+      await Notification.create({
+        user: buyerId,
+        type: notifType,
+        title: notifTitle,
+        message: notifMsg,
+        data: { offerId: offer._id, cropListingId: offer.cropListing?._id ?? offer.cropListing, offerPrice: offer.offerPrice },
+        priority: action === "accept" ? "high" : "normal",
+      }).catch(() => {}); // non-blocking
+    }
+
     return res.status(200).json({ success: true, offer });
   } catch (err) {
     return res.status(500).json({ success: false, message: err.message });

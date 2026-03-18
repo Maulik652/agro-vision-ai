@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
+import useOfferSocket from "../../hooks/useOfferSocket";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Activity,
@@ -198,11 +199,22 @@ const SellCrop = () => {
 
   const [actionLoading, setActionLoading] = useState("");
 
+  /* ─── Real-time socket refresh ──────────────────────────────────── */
+  useOfferSocket({
+    new_offer: () => {
+      if (activeTab === "offers") fetchOffers();
+      else setOffers((prev) => prev); // trigger badge update on next tab open
+    },
+    offer_responded: () => { if (activeTab === "offers") fetchOffers(); },
+    new_order: () => { if (activeTab === "orders") fetchOrders(); },
+    order_paid: () => { if (activeTab === "orders") fetchOrders(); },
+  });
+
   /* ─── Fetch Helpers ──────────────────────────────────────────────── */
 
   const fetchHarvest = useCallback(async (crop) => {
     try {
-      const data = await getHarvestInsights(crop);
+      const data = await getHarvestInsights({ crop });
       setHarvest(data);
     } catch { setHarvest(null); }
   }, []);
@@ -260,7 +272,7 @@ const SellCrop = () => {
     setDiscoveryLoading(true);
     try {
       const [buyersRes, demandRes] = await Promise.allSettled([
-        discoverBuyers(harvestCrop, ""),
+        discoverBuyers({ crop: harvestCrop }),
         getDemandIndicators(),
       ]);
       if (buyersRes.status === "fulfilled") setBuyers(buyersRes.value.buyers || []);
@@ -771,23 +783,23 @@ const SellCrop = () => {
                         whileHover={{ y: -2 }}
                       >
                         <div className="flex flex-wrap items-start justify-between gap-3">
-                          <div>
+                          <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-3">
-                              <p className="font-bold text-slate-800">Order #{order.orderId}</p>
-                              <StatusBadge status={order.status} map={ORDER_STATUS_COLORS} />
+                              <p className="font-bold text-slate-800">Order #{order.orderId || order._id?.slice(-6)}</p>
+                              <StatusBadge status={order.orderStatus || order.status} map={ORDER_STATUS_COLORS} />
                             </div>
                             <div className="mt-2 grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-4">
                               <span>
                                 <span className="text-xs text-slate-500">Crop: </span>
-                                <span className="font-semibold">{order.cropName}</span>
+                                <span className="font-semibold">{order.cropName || order.items?.[0]?.cropName || "—"}</span>
                               </span>
                               <span>
                                 <span className="text-xs text-slate-500">Qty: </span>
-                                <span className="font-semibold">{order.quantity} {order.quantityUnit}</span>
+                                <span className="font-semibold">{order.quantity || order.items?.[0]?.quantity} {order.quantityUnit || order.items?.[0]?.unit}</span>
                               </span>
                               <span>
                                 <span className="text-xs text-slate-500">Price: </span>
-                                <span className="font-bold">{formatINR(order.pricePerUnit)}/{order.quantityUnit}</span>
+                                <span className="font-bold">{formatINR(order.pricePerUnit || order.items?.[0]?.pricePerKg)}/{order.quantityUnit || "kg"}</span>
                               </span>
                               <span>
                                 <span className="text-xs text-slate-500">Total: </span>
@@ -797,11 +809,23 @@ const SellCrop = () => {
                             <p className="mt-2 text-xs text-slate-500">
                               Buyer: {order.buyerName || order.buyer?.name || "—"} · {new Date(order.createdAt).toLocaleDateString("en-IN")}
                             </p>
+                            {/* Delivery Address */}
+                            {order.deliveryAddress && (
+                              <div className="mt-2 flex items-start gap-1.5 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2">
+                                <MapPin size={11} className="text-emerald-600 mt-0.5 shrink-0" />
+                                <div className="text-[11px] text-slate-600">
+                                  <span className="font-semibold text-slate-700">{order.deliveryAddress.fullName}</span>
+                                  {order.deliveryAddress.phone && <span className="text-slate-400"> · {order.deliveryAddress.phone}</span>}
+                                  <br />
+                                  {order.deliveryAddress.street}, {order.deliveryAddress.city}, {order.deliveryAddress.state} — {order.deliveryAddress.postalCode}
+                                </div>
+                              </div>
+                            )}
                           </div>
 
-                          {order.status !== "delivered" && order.status !== "cancelled" && (
+                          {(order.orderStatus || order.status) !== "delivered" && (order.orderStatus || order.status) !== "cancelled" && (
                             <div className="flex flex-wrap gap-1.5">
-                              {order.status === "pending" && (
+                              {(order.orderStatus || order.status) === "pending" && (
                                 <button type="button" onClick={() => handleOrderStatusUpdate(order._id, "confirmed")}
                                   disabled={actionLoading === `order-${order._id}`}
                                   className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
@@ -809,7 +833,15 @@ const SellCrop = () => {
                                   Confirm
                                 </button>
                               )}
-                              {order.status === "confirmed" && (
+                              {(order.orderStatus || order.status) === "paid" && (
+                                <button type="button" onClick={() => handleOrderStatusUpdate(order._id, "confirmed")}
+                                  disabled={actionLoading === `order-${order._id}`}
+                                  className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+                                >
+                                  Confirm
+                                </button>
+                              )}
+                              {(order.orderStatus || order.status) === "confirmed" && (
                                 <button type="button" onClick={() => handleOrderStatusUpdate(order._id, "processing")}
                                   disabled={actionLoading === `order-${order._id}`}
                                   className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
@@ -817,7 +849,7 @@ const SellCrop = () => {
                                   Processing
                                 </button>
                               )}
-                              {order.status === "processing" && (
+                              {(order.orderStatus || order.status) === "processing" && (
                                 <button type="button" onClick={() => handleOrderStatusUpdate(order._id, "shipped")}
                                   disabled={actionLoading === `order-${order._id}`}
                                   className="rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-700 disabled:opacity-50"
@@ -825,7 +857,7 @@ const SellCrop = () => {
                                   Ship
                                 </button>
                               )}
-                              {order.status === "shipped" && (
+                              {(order.orderStatus || order.status) === "shipped" && (
                                 <button type="button" onClick={() => handleOrderStatusUpdate(order._id, "delivered")}
                                   disabled={actionLoading === `order-${order._id}`}
                                   className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"

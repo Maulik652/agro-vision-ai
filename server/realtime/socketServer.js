@@ -183,6 +183,10 @@ export const initializeSocketServer = (httpServer, { allowedOrigins = [] } = {})
       }
     }
 
+    if (role === "farmer" && userId) {
+      socket.join(`farmer:${userId}`);
+    }
+
     socket.on("join_buyer_room", ({ userId: requestedUserId } = {}) => {
       if (userId && String(requestedUserId || "") === userId) {
         socket.join("buyers");
@@ -489,5 +493,41 @@ export const emitPriceDropAlert = ({ buyerId, crop }) => {
     eventName: "price_drop_alert",
     payload: { crop },
     buyerId
+  });
+};
+
+/**
+ * emitStockUpdate
+ * Broadcasts real-time stock changes to all connected buyers.
+ * @param {string} cropId
+ * @param {number} newQuantity  — remaining stock after order
+ * @param {boolean} outOfStock  — true when quantity reaches 0
+ */
+export const emitStockUpdate = (cropId, newQuantity, outOfStock = false) => {
+  if (!ioInstance) return;
+  const payload = {
+    cropId: String(cropId),
+    quantity: newQuantity,
+    outOfStock,
+    emittedAt: new Date().toISOString(),
+  };
+  // Broadcast to all buyers (marketplace page)
+  ioInstance.to("buyers").emit("stock_update", payload);
+  // Also broadcast globally so CropDetail pages pick it up
+  ioInstance.emit("stock_update", payload);
+};
+
+/**
+ * emitInventoryUpdate
+ * Notifies the farmer's private room that their inventory has changed.
+ * Triggered on: stock deduction (order), pause, unpause, status change.
+ * @param {string} farmerId
+ * @param {object} payload  — { cropId, cropName, quantity, status, event }
+ */
+export const emitInventoryUpdate = (farmerId, payload = {}) => {
+  if (!ioInstance || !farmerId) return;
+  ioInstance.to(`farmer:${String(farmerId)}`).emit("inventory_update", {
+    ...payload,
+    emittedAt: new Date().toISOString(),
   });
 };

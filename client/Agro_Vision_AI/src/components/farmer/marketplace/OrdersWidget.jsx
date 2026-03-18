@@ -1,13 +1,16 @@
-import { motion } from "framer-motion";
-import { ShoppingCart, Package, Truck, CheckCircle, Clock, XCircle, ChevronRight, Loader2 } from "lucide-react";
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { ShoppingCart, Package, Truck, CheckCircle, Clock, XCircle, ChevronRight, ChevronDown, Loader2, MapPin } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
-import { getRecentOrders } from "../../../api/farmerMarketplaceApi";
-import { updateOrderStatus } from "../../../api/marketplaceApi";
+import { getRecentOrders, updateCropOrder } from "../../../api/farmerMarketplaceApi";
 import useOrderStatusSocket from "../../../hooks/useOrderStatusSocket";
+import useOfferSocket from "../../../hooks/useOfferSocket";
 
 const STATUS_CONFIG = {
   pending: { icon: Clock, color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-200", label: "Pending" },
+  pending_payment: { icon: Clock, color: "text-slate-500", bg: "bg-slate-50", border: "border-slate-200", label: "Awaiting Payment" },
+  paid: { icon: CheckCircle, color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-200", label: "Paid" },
   confirmed: { icon: CheckCircle, color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-200", label: "Confirmed" },
   processing: { icon: Package, color: "text-violet-600", bg: "bg-violet-50", border: "border-violet-200", label: "Processing" },
   shipped: { icon: Truck, color: "text-indigo-600", bg: "bg-indigo-50", border: "border-indigo-200", label: "Shipped" },
@@ -16,15 +19,16 @@ const STATUS_CONFIG = {
   cancelled: { icon: XCircle, color: "text-rose-600", bg: "bg-rose-50", border: "border-rose-200", label: "Cancelled" },
 };
 
-const NEXT_STATUS = { pending: "confirmed", confirmed: "processing", processing: "shipped", shipped: "delivered", delivered: "completed" };
+const NEXT_STATUS = { pending: "confirmed", paid: "confirmed", confirmed: "processing", processing: "shipped", shipped: "delivered", delivered: "completed" };
 
 function OrderRow({ order, onUpdate }) {
+  const [expanded, setExpanded] = useState(false);
   const cfg = STATUS_CONFIG[order.status] || STATUS_CONFIG.pending;
   const Icon = cfg.icon;
   const next = NEXT_STATUS[order.status];
 
   const { mutate: advance, isPending } = useMutation({
-    mutationFn: () => updateOrderStatus(order._id, { status: next }),
+    mutationFn: () => updateCropOrder(order._id, { status: next }),
     onSuccess: () => { toast.success(`Order marked as ${next}`); onUpdate?.(); },
     onError: (e) => toast.error(e?.response?.data?.message || "Update failed"),
   });
@@ -32,27 +36,59 @@ function OrderRow({ order, onUpdate }) {
   const buyer = order.buyer?.name || "Buyer";
   const cropName = order.cropName || order.items?.[0]?.cropName || "Crop";
   const amount = order.totalAmount || 0;
+  const addr = order.deliveryAddress;
 
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/50 p-3 hover:bg-slate-50 transition">
-      <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${cfg.bg} ${cfg.border} border`}>
-        <Icon size={14} className={cfg.color} />
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1.5">
-          <p className="text-xs font-bold text-slate-800 truncate">{cropName}</p>
-          <span className={`shrink-0 rounded-full border px-1.5 py-0.5 text-[9px] font-bold ${cfg.bg} ${cfg.border} ${cfg.color}`}>{cfg.label}</span>
+    <div className="rounded-xl border border-slate-100 bg-slate-50/50 overflow-hidden">
+      <div className="flex items-center gap-3 p-3 hover:bg-slate-50 transition">
+        <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${cfg.bg} ${cfg.border} border`}>
+          <Icon size={14} className={cfg.color} />
         </div>
-        <p className="text-[10px] text-slate-500">{buyer} · {new Date(order.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</p>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5">
+            <p className="text-xs font-bold text-slate-800 truncate">{cropName}</p>
+            <span className={`shrink-0 rounded-full border px-1.5 py-0.5 text-[9px] font-bold ${cfg.bg} ${cfg.border} ${cfg.color}`}>{cfg.label}</span>
+          </div>
+          <p className="text-[10px] text-slate-500">{buyer} · {new Date(order.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</p>
+        </div>
+        <div className="text-right shrink-0 flex items-center gap-2">
+          <div>
+            <p className="text-xs font-black text-emerald-700">₹{amount.toLocaleString("en-IN")}</p>
+            {next && (
+              <button onClick={() => advance()} disabled={isPending} className="mt-0.5 text-[9px] font-bold text-blue-600 hover:text-blue-800 transition disabled:opacity-50">
+                {isPending ? "..." : `→ ${next}`}
+              </button>
+            )}
+          </div>
+          {addr && (
+            <button onClick={() => setExpanded((v) => !v)} className="p-1 rounded-lg hover:bg-slate-200 transition">
+              <ChevronDown size={12} className={`text-slate-400 transition-transform ${expanded ? "rotate-180" : ""}`} />
+            </button>
+          )}
+        </div>
       </div>
-      <div className="text-right shrink-0">
-        <p className="text-xs font-black text-emerald-700">₹{amount.toLocaleString("en-IN")}</p>
-        {next && (
-          <button onClick={() => advance()} disabled={isPending} className="mt-0.5 text-[9px] font-bold text-blue-600 hover:text-blue-800 transition disabled:opacity-50">
-            {isPending ? "..." : `→ ${next}`}
-          </button>
+
+      <AnimatePresence>
+        {expanded && addr && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className="px-3 pb-3 pt-0">
+              <div className="rounded-lg border border-slate-200 bg-white p-2.5 flex items-start gap-2">
+                <MapPin size={12} className="text-emerald-600 mt-0.5 shrink-0" />
+                <div className="text-[10px] text-slate-600 space-y-0.5">
+                  <p className="font-semibold text-slate-800">{addr.fullName} · {addr.phone}</p>
+                  <p>{addr.street}, {addr.city}, {addr.state} — {addr.postalCode}</p>
+                </div>
+              </div>
+            </div>
+          </motion.div>
         )}
-      </div>
+      </AnimatePresence>
     </div>
   );
 }
@@ -60,8 +96,21 @@ function OrderRow({ order, onUpdate }) {
 export default function OrdersWidget({ compact = false, onTabSwitch }) {
   const qc = useQueryClient();
 
-  // Real-time order status updates from admin panel
   useOrderStatusSocket({ queryKeys: ["farmerOrders", "farmerMarketSummary"], showToast: true });
+
+  // Real-time: new order placed or payment confirmed
+  useOfferSocket({
+    new_order: (payload) => {
+      qc.invalidateQueries({ queryKey: ["farmerOrders"] });
+      qc.invalidateQueries({ queryKey: ["farmerMarketSummary"] });
+      toast("🛒 New order received!", { icon: "📦" });
+    },
+    order_paid: (payload) => {
+      qc.invalidateQueries({ queryKey: ["farmerOrders"] });
+      qc.invalidateQueries({ queryKey: ["farmerMarketSummary"] });
+      toast.success("💰 Payment confirmed for an order!");
+    },
+  });
 
   const { data, isLoading } = useQuery({
     queryKey: ["farmerOrders"],

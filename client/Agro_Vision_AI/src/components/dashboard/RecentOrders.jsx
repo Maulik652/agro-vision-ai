@@ -2,12 +2,14 @@ import { motion } from "framer-motion";
 import { ClipboardList } from "lucide-react";
 
 const STATUS_CONFIG = {
-  pending:    { bg: "bg-amber-100",   text: "text-amber-700",   dot: "bg-amber-500" },
-  confirmed:  { bg: "bg-green-100",   text: "text-green-700",   dot: "bg-green-600" },
-  processing: { bg: "bg-emerald-100", text: "text-emerald-700", dot: "bg-emerald-500" },
-  shipped:    { bg: "bg-teal-100",    text: "text-teal-700",    dot: "bg-teal-500" },
-  delivered:  { bg: "bg-emerald-100", text: "text-emerald-700", dot: "bg-emerald-500" },
-  cancelled:  { bg: "bg-red-100",     text: "text-red-700",     dot: "bg-red-500" }
+  pending:         { bg: "bg-amber-100",   text: "text-amber-700",   dot: "bg-amber-500" },
+  pending_payment: { bg: "bg-slate-100",   text: "text-slate-600",   dot: "bg-slate-400" },
+  paid:            { bg: "bg-blue-100",    text: "text-blue-700",    dot: "bg-blue-500"  },
+  confirmed:       { bg: "bg-green-100",   text: "text-green-700",   dot: "bg-green-600" },
+  processing:      { bg: "bg-emerald-100", text: "text-emerald-700", dot: "bg-emerald-500" },
+  shipped:         { bg: "bg-teal-100",    text: "text-teal-700",    dot: "bg-teal-500"  },
+  delivered:       { bg: "bg-emerald-100", text: "text-emerald-700", dot: "bg-emerald-500" },
+  cancelled:       { bg: "bg-red-100",     text: "text-red-700",     dot: "bg-red-500"   }
 };
 
 const StatusBadge = ({ status }) => {
@@ -54,22 +56,26 @@ const RecentOrders = ({ orders, isLoading }) => {
             <tbody>
               {rows.map((order, index) => (
                 <motion.tr
-                  key={`${order.orderId}_${index}`}
+                  key={`${order.orderId ?? order._id}_${index}`}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: index * 0.04 }}
                   className="border-b border-slate-50 last:border-0 hover:bg-slate-50 transition"
                 >
                   <td className="px-3 py-3 font-mono text-xs font-semibold text-slate-700">
-                    #{String(order.orderId || "").slice(-8)}
+                    #{String(order.orderId || order._id || "").slice(-8)}
                   </td>
-                  <td className="px-3 py-3 font-medium text-slate-900">{order.crop}</td>
-                  <td className="px-3 py-3 text-slate-600">{order.farmer}</td>
+                  <td className="px-3 py-3 font-medium text-slate-900">
+                    {order.crop || order.cropName || order.items?.[0]?.cropName || "—"}
+                  </td>
+                  <td className="px-3 py-3 text-slate-600">
+                    {order.farmer?.name || order.farmer || "—"}
+                  </td>
                   <td className="px-3 py-3 text-slate-600 whitespace-nowrap">
-                    {Number(order.quantity || 0).toLocaleString("en-IN")} {order.quantityUnit}
+                    {Number(order.quantity || order.items?.[0]?.quantity || 0).toLocaleString("en-IN")} {order.quantityUnit || order.items?.[0]?.unit || "kg"}
                   </td>
                   <td className="px-3 py-3">
-                    <StatusBadge status={order.status} />
+                    <StatusBadge status={order.status || order.orderStatus} />
                   </td>
                 </motion.tr>
               ))}

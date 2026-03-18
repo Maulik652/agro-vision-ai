@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { HandCoins, CheckCircle, XCircle, Clock, User, Package, Loader2, ChevronRight, MessageSquare, ArrowRight } from "lucide-react";
+import { HandCoins, CheckCircle, XCircle, Clock, User, Package, Loader2, ChevronRight, MessageSquare, ArrowRight, RefreshCw } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { getBuyerRequests } from "../../../api/farmerMarketplaceApi";
 import { respondToOffer } from "../../../api/marketplaceApi";
+import useOfferSocket from "../../../hooks/useOfferSocket";
 
 const STATUS_STYLES = {
   pending: "bg-amber-100 text-amber-700 border-amber-200",
@@ -114,6 +115,18 @@ export default function BuyerRequestsPanel({ compact = false, onTabSwitch }) {
     qc.invalidateQueries({ queryKey: ["farmerOffers"] });
     qc.invalidateQueries({ queryKey: ["farmerMarketSummary"] });
   };
+
+  // Real-time: new offer arrives or farmer responds → refresh
+  useOfferSocket({
+    new_offer: () => {
+      qc.invalidateQueries({ queryKey: ["farmerOffers"] });
+      qc.invalidateQueries({ queryKey: ["farmerMarketSummary"] });
+      toast("New buyer offer received!", { icon: "💰" });
+    },
+    offer_responded: () => {
+      qc.invalidateQueries({ queryKey: ["farmerOffers"] });
+    },
+  });
 
   if (isLoading) {
     return (

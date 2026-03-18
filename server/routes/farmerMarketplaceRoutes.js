@@ -7,6 +7,7 @@ import {
   getMarketInsights,
   getBuyerRequests,
   getFarmerRecentOrders,
+  updateCropOrderStatus,
   getFarmerMarketReviews,
   getAIPriceSuggestionEnhanced,
   getFarmerInventory,
@@ -25,6 +26,7 @@ router.get("/earnings",             getFarmerEarnings);
 router.get("/market-insights",      getMarketInsights);
 router.get("/buyer-requests",       getBuyerRequests);
 router.get("/orders",               getFarmerRecentOrders);
+router.patch("/orders/:id",         updateCropOrderStatus);
 router.get("/reviews",              getFarmerMarketReviews);
 router.post("/ai-price",            getAIPriceSuggestionEnhanced);
 router.get("/inventory",            getFarmerInventory);

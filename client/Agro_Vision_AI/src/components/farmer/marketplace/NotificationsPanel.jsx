@@ -1,8 +1,12 @@
 import { motion } from "framer-motion";
 import { Bell, HandCoins, ShoppingCart, DollarSign, Package, X, CheckCheck, Loader2 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useRef } from "react";
+import { io } from "socket.io-client";
 import toast from "react-hot-toast";
 import { getNotifications, markAllRead } from "../../../api/farmerMarketplaceApi";
+
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || "http://localhost:5000";
 
 const TYPE_CONFIG = {
   new_offer: { icon: HandCoins, color: "text-amber-600", bg: "bg-amber-50" },
@@ -21,6 +25,18 @@ export default function NotificationsPanel({ onClose }) {
     staleTime: 15000,
     retry: 1,
   });
+
+  // Real-time: refresh notifications on new offer/order events
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    const socket = io(SOCKET_URL, { auth: { token }, transports: ["websocket", "polling"], reconnectionAttempts: 5 });
+    const invalidate = () => qc.invalidateQueries({ queryKey: ["farmerNotifications"] });
+    socket.on("new_offer", invalidate);
+    socket.on("new_order", invalidate);
+    socket.on("order_paid", invalidate);
+    socket.on("order_update", invalidate);
+    return () => socket.disconnect();
+  }, [qc]);
 
   const { mutate: markRead, isPending: marking } = useMutation({
     mutationFn: markAllRead,

@@ -13,9 +13,9 @@ const notificationSchema = new mongoose.Schema(
       required: true,
       enum: [
         "offer_received", "offer_accepted", "offer_rejected",
-        "order_update", "price_alert", "weather_alert",
+        "order_update", "order_cancelled", "price_alert", "weather_alert",
         "crop_reminder", "harvest_ready", "payment_received",
-        "scan_result", "system", "farmgpt"
+        "new_offer", "scan_result", "system", "farmgpt"
       ]
     },
     title: {

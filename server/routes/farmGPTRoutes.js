@@ -4,6 +4,7 @@ import FarmGPTChat from "../models/FarmGPTChat.js";
 import { spawn } from "child_process";
 import path from "path";
 import { fileURLToPath } from "url";
+import { getSocketServer } from "../realtime/socketServer.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -16,24 +17,36 @@ const callFarmGPT = (question, context) =>
   new Promise((resolve) => {
     const ctxStr = JSON.stringify(context);
     const proc = spawn("python", [path.join(AI_DIR, "farmgpt_engine.py"), question, ctxStr], {
-      timeout: 15000,
+      timeout: 20000,
       env: { ...process.env, PYTHONIOENCODING: "utf-8" }
     });
-
-    let out = "";
-    let err = "";
+    let out = "", err = "";
     proc.stdout.on("data", (d) => (out += d.toString()));
     proc.stderr.on("data", (d) => (err += d.toString()));
-    proc.on("close", (code) => {
-      try {
-        const parsed = JSON.parse(out);
-        resolve(parsed);
-      } catch {
-        resolve(null);
-      }
+    proc.on("close", () => {
+      try { resolve(JSON.parse(out)); }
+      catch { resolve(null); }
     });
     proc.on("error", () => resolve(null));
   });
+
+/* helper: stream response word-by-word via socket */
+const streamResponse = (io, userId, sessionId, text, intent) => {
+  if (!io || !text) return;
+  const room = `user:${userId}`;
+  const words = text.split(" ");
+  let i = 0;
+  const interval = setInterval(() => {
+    if (i >= words.length) {
+      clearInterval(interval);
+      io.to(room).emit("farmgpt_stream_end", { sessionId, intent });
+      return;
+    }
+    const chunk = (i === 0 ? "" : " ") + words[i];
+    io.to(room).emit("farmgpt_stream_chunk", { sessionId, chunk });
+    i++;
+  }, 18); // ~55 words/sec — feels natural
+};
 
 /* Fallback response if Python fails */
 const buildFallbackResponse = (question, context) => {
@@ -82,7 +95,6 @@ router.post("/chat", protect, authorize("farmer", "admin"), async (req, res) => 
     /* Save to chat history */
     const sid = sessionId || `session_${user._id}_${Date.now()}`;
     let chat = await FarmGPTChat.findOne({ farmer: user._id, sessionId: sid });
-
     if (!chat) {
       chat = new FarmGPTChat({
         farmer: user._id,
@@ -98,19 +110,17 @@ router.post("/chat", protect, authorize("farmer", "admin"), async (req, res) => 
         title: safeQuestion.slice(0, 80)
       });
     }
-
     chat.messages.push({ role: "user", content: safeQuestion });
     chat.messages.push({
       role: "assistant",
       content: aiResult.response,
-      context: {
-        weather: context.weather,
-        market: context.market,
-        scan: context.last_scan
-      }
+      context: { weather: context.weather, market: context.market, scan: context.last_scan }
     });
-
     await chat.save();
+
+    /* Stream response via socket for real-time typing effect */
+    const io = getSocketServer();
+    streamResponse(io, String(user._id), sid, aiResult.response, aiResult.intent);
 
     return res.json({
       success: true,

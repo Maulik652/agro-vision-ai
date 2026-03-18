@@ -3,7 +3,7 @@ import api from "./axios";
 const unwrap = (r) => r?.data?.data;
 
 /* ── Farmer / Buyer side ─────────────────────────────────────────────────── */
-export const fetchAvailableExperts       = ()          => api.get("/consultations/experts").then(unwrap);
+export const fetchAvailableExperts       = (params={}) => api.get("/consultations/experts", { params }).then(unwrap);
 export const createConsultationRequest   = (body)      => api.post("/consultations", body).then(unwrap);
 export const fetchMyConsultations        = (params={}) => api.get("/consultations/my", { params }).then(unwrap);
 export const fetchMyConsultationById     = (id)        => api.get(`/consultations/my/${id}`).then(unwrap);

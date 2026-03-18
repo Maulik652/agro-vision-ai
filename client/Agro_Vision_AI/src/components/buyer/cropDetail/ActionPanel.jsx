@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ShoppingCart, Zap, MessageCircle, Tag, RefreshCw, BarChart2, Send, Clock } from "lucide-react";
+import { ShoppingCart, Zap, MessageCircle, Tag, RefreshCw, BarChart2, Send, Clock, AlertCircle, CheckCircle, XCircle } from "lucide-react";
 import toast from "react-hot-toast";
 import { getAINegotiationSuggestion, submitOffer } from "../../../api/marketplaceApi";
+import useOfferSocket from "../../../hooks/useOfferSocket";
 
 const UNIT_MIN_ORDER = { kg: 10, quintal: 1, ton: 1 };
 const UNIT_STEP      = { kg: 10, quintal: 1, ton: 1 };
@@ -27,9 +28,39 @@ export default function ActionPanel({ crop, onAddToCart, onBuyNow, onChat, addin
   const [aiLoading, setAiLoading] = useState(false);
   const [submittingOffer, setSubmittingOffer] = useState(false);
 
+  // Real-time offer response state
+  const [offerBanner, setOfferBanner] = useState(null); // { type: "accepted"|"rejected"|"counter", price?, message }
+  const [acceptedPrice, setAcceptedPrice] = useState(null); // override displayed price after accept
+
+  const cropListingId = crop?.id || crop?._id;
+
+  useOfferSocket({
+    offer_accepted: (payload) => {
+      const pid = payload.cropListingId?.toString?.() ?? payload.cropListingId;
+      if (pid !== cropListingId?.toString()) return;
+      setAcceptedPrice(payload.offerPrice);
+      setOfferBanner({ type: "accepted", price: payload.offerPrice, message: payload.message });
+      toast.success(`🎉 Your offer of ₹${payload.offerPrice} was accepted!`);
+    },
+    offer_rejected: (payload) => {
+      const pid = payload.cropListingId?.toString?.() ?? payload.cropListingId;
+      if (pid !== cropListingId?.toString()) return;
+      setOfferBanner({ type: "rejected", message: payload.message });
+      toast.error("Your offer was rejected by the farmer.");
+    },
+    offer_counter: (payload) => {
+      const pid = payload.cropListingId?.toString?.() ?? payload.cropListingId;
+      if (pid !== cropListingId?.toString()) return;
+      setOfferBanner({ type: "counter", price: payload.counterPrice, message: payload.message });
+      toast(`Farmer countered at ₹${payload.counterPrice}`, { icon: "🔄" });
+    },
+  });
+
   if (!crop) return null;
 
-  const total = crop.price * qty;
+  const outOfStock = crop.quantity <= 0 || crop.status === "sold";
+  const displayPrice = acceptedPrice ?? crop.price;
+  const total = displayPrice * qty;
   const demand = crop.aiSellReadiness ?? 60;
   const demandColor = demand >= 70 ? "text-emerald-700" : demand >= 45 ? "text-amber-600" : "text-red-600";
   const demandBg = demand >= 70 ? "bg-emerald-500" : demand >= 45 ? "bg-amber-500" : "bg-red-400";
@@ -59,6 +90,7 @@ export default function ActionPanel({ crop, onAddToCart, onBuyNow, onChat, addin
       });
       toast.success("Offer submitted to farmer");
       setShowNegotiate(false); setOfferPrice(""); setAiResult(null);
+      setOfferBanner(null);
     } catch { toast.error("Failed to submit offer"); }
     finally { setSubmittingOffer(false); }
   };
@@ -68,11 +100,60 @@ export default function ActionPanel({ crop, onAddToCart, onBuyNow, onChat, addin
 
   return (
     <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm space-y-4">
+      {/* Out of stock banner */}
+      {outOfStock && (
+        <div className="flex items-center gap-2.5 rounded-xl bg-red-50 border border-red-200 px-4 py-3">
+          <AlertCircle size={16} className="text-red-600 shrink-0" />
+          <div>
+            <p className="text-sm font-semibold text-red-800">Out of Stock</p>
+            <p className="text-xs text-red-600">This listing is no longer available for purchase.</p>
+          </div>
+        </div>
+      )}
+
+      {/* Offer response banner */}
+      <AnimatePresence>
+        {offerBanner && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            className={`flex items-start gap-2.5 rounded-xl border px-4 py-3 ${
+              offerBanner.type === "accepted"
+                ? "bg-emerald-50 border-emerald-200"
+                : offerBanner.type === "rejected"
+                  ? "bg-red-50 border-red-200"
+                  : "bg-blue-50 border-blue-200"
+            }`}
+          >
+            {offerBanner.type === "accepted" && <CheckCircle size={16} className="text-emerald-600 shrink-0 mt-0.5" />}
+            {offerBanner.type === "rejected" && <XCircle size={16} className="text-red-600 shrink-0 mt-0.5" />}
+            {offerBanner.type === "counter" && <RefreshCw size={16} className="text-blue-600 shrink-0 mt-0.5" />}
+            <div className="flex-1">
+              <p className={`text-sm font-semibold ${
+                offerBanner.type === "accepted" ? "text-emerald-800"
+                  : offerBanner.type === "rejected" ? "text-red-800"
+                    : "text-blue-800"
+              }`}>
+                {offerBanner.type === "accepted" && `Offer Accepted — ₹${offerBanner.price}/${unit}`}
+                {offerBanner.type === "rejected" && "Offer Rejected"}
+                {offerBanner.type === "counter" && `Counter Offer — ₹${offerBanner.price}/${unit}`}
+              </p>
+              <p className="text-xs text-slate-500 mt-0.5">{offerBanner.message}</p>
+            </div>
+            <button onClick={() => setOfferBanner(null)} className="text-slate-400 hover:text-slate-600 text-xs">✕</button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Price */}
       <div>
         <div className="flex items-baseline gap-2">
-          <span className="text-3xl font-bold text-slate-900">₹{crop.price}</span>
+          <span className="text-3xl font-bold text-slate-900">₹{displayPrice}</span>
           <span className="text-slate-400 text-sm">/{crop.quantityUnit ?? "kg"}</span>
+          {acceptedPrice && (
+            <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5">Offer Price</span>
+          )}
         </div>
         {crop.aiSuggestedPrice && (
           <p className="text-green-700 text-xs mt-1 flex items-center gap-1">
@@ -113,7 +194,9 @@ export default function ActionPanel({ crop, onAddToCart, onBuyNow, onChat, addin
         </div>
         <div className="flex justify-between mt-1 text-[10px] text-slate-400 px-0.5">
           <span>Min: {minQty} {unit}</span>
-          <span>Available: {crop.quantity} {unit}</span>
+          <span className={outOfStock ? "text-red-500 font-medium" : ""}>
+            {outOfStock ? "Out of stock" : `Available: ${crop.quantity} ${unit}`}
+          </span>
         </div>
       </div>
 
@@ -124,16 +207,16 @@ export default function ActionPanel({ crop, onAddToCart, onBuyNow, onChat, addin
       </div>
 
       {/* CTAs */}
-      <button onClick={() => onAddToCart?.(qty)} disabled={addingCart}
-        className="w-full py-3 rounded-xl bg-green-700 hover:bg-green-800 text-white font-semibold text-sm transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm shadow-green-700/20">
+      <button onClick={() => onAddToCart?.(qty)} disabled={addingCart || outOfStock}
+        className="w-full py-3 rounded-xl bg-green-700 hover:bg-green-800 text-white font-semibold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-sm shadow-green-700/20">
         {addingCart ? <RefreshCw size={15} className="animate-spin" /> : <ShoppingCart size={15} />}
-        {addingCart ? "Adding..." : "Add to Cart"}
+        {addingCart ? "Adding..." : outOfStock ? "Out of Stock" : "Add to Cart"}
       </button>
 
-      <button onClick={() => onBuyNow?.(qty)} disabled={buyingNow}
-        className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm shadow-blue-600/20">
+      <button onClick={() => onBuyNow?.(qty)} disabled={buyingNow || outOfStock}
+        className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-sm shadow-blue-600/20">
         {buyingNow ? <RefreshCw size={15} className="animate-spin" /> : <Zap size={15} />}
-        {buyingNow ? "Processing..." : "Buy Now"}
+        {buyingNow ? "Processing..." : outOfStock ? "Unavailable" : "Buy Now"}
       </button>
 
       <button
@@ -142,7 +225,7 @@ export default function ActionPanel({ crop, onAddToCart, onBuyNow, onChat, addin
         <MessageCircle size={15} /> Chat with Farmer
       </button>
 
-      {crop.negotiable && (
+      {crop.negotiable && !outOfStock && (
         <button onClick={() => setShowNegotiate(!showNegotiate)}
           className="w-full py-2.5 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-700 font-semibold text-sm transition-all flex items-center justify-center gap-2">
           <Tag size={14} /> {showNegotiate ? "Hide Negotiation" : "Make Price Offer"}

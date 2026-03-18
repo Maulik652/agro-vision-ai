@@ -18,11 +18,40 @@ const textSeed = (s = "") => {
 
 /* ───── Farmer Listings ───────────────────────────────────────────── */
 
-export const getMyListings = async (farmerId) => {
-  const listings = await CropListing.find({ farmer: farmerId })
-    .sort({ createdAt: -1 })
-    .lean();
-  return listings;
+export const getMyListings = async (farmerId, opts = {}) => {
+  const { search, category, status, sortBy = "newest", page = 1, limit = 9 } = opts;
+
+  const query = { farmer: farmerId };
+
+  if (search) {
+    query.$or = [
+      { cropName: { $regex: search, $options: "i" } },
+      { variety: { $regex: search, $options: "i" } },
+    ];
+  }
+  if (category && category !== "All") {
+    query.cropName = { $regex: `^${category}`, $options: "i" };
+  }
+  if (status && status !== "all") {
+    query.status = status;
+  }
+
+  const sortMap = {
+    newest:     { createdAt: -1 },
+    oldest:     { createdAt: 1 },
+    price_high: { price: -1 },
+    price_low:  { price: 1 },
+    views:      { views: -1 },
+  };
+  const sort = sortMap[sortBy] ?? { createdAt: -1 };
+
+  const skip = (Number(page) - 1) * Number(limit);
+  const [listings, total] = await Promise.all([
+    CropListing.find(query).sort(sort).skip(skip).limit(Number(limit)).lean(),
+    CropListing.countDocuments(query),
+  ]);
+
+  return { listings, total, pages: Math.ceil(total / Number(limit)) || 1 };
 };
 
 export const updateListing = async (listingId, farmerId, updates) => {
@@ -43,6 +72,18 @@ export const updateListing = async (listingId, farmerId, updates) => {
     { new: true, runValidators: true }
   ).lean();
 
+  if (listing && (safe.status !== undefined || safe.isActive !== undefined || safe.quantity !== undefined)) {
+    const { emitInventoryUpdate } = await import("../realtime/socketServer.js");
+    emitInventoryUpdate(farmerId.toString(), {
+      cropId: listing._id.toString(),
+      cropName: listing.cropName,
+      quantity: listing.quantity,
+      status: listing.status,
+      isActive: listing.isActive,
+      event: "listing_updated",
+    });
+  }
+
   return listing;
 };
 
@@ -55,7 +96,7 @@ export const deleteListing = async (listingId, farmerId) => {
 };
 
 export const pauseListing = async (listingId, farmerId) => {
-  return updateListing(listingId, farmerId, { isActive: false, status: "expired" });
+  return updateListing(listingId, farmerId, { isActive: false, status: "paused" });
 };
 
 /* ───── Buyer Offers ──────────────────────────────────────────────── */
@@ -153,14 +194,49 @@ export const updateOrderStatus = async (orderId, farmerId, status) => {
 
   const order = await Order.findOneAndUpdate(
     { _id: orderId, farmer: farmerId },
-    { $set: { status } },
+    { $set: { orderStatus: status, status } },
     { new: true, runValidators: true }
   )
-    .populate("buyer", "name email phone")
+    .populate("buyer", "_id name email phone")
+    .populate("farmer", "_id name")
     .lean();
 
+  if (order) {
+    // Emit real-time update to buyer
+    const { getSocketServer } = await import("../realtime/socketServer.js");
+    const io = getSocketServer();
+    if (io) {
+      const buyerId = order.buyer?._id?.toString() ?? order.buyer?.toString();
+      const payload = {
+        orderId: order._id,
+        orderStatus: status,
+        order,
+        emittedAt: new Date().toISOString(),
+      };
+      if (buyerId) io.to(`user:${buyerId}`).emit("order_update", payload);
+      io.to(`user:${farmerId.toString()}`).emit("order_update", payload);
+    }
+
+    // Persist notification for buyer on cancellation
+    if (status === "cancelled") {
+      const buyerId = order.buyer?._id?.toString() ?? order.buyer?.toString();
+      if (buyerId) {
+        const Notification = (await import("../models/Notification.js")).default;
+        const cropName = order.items?.[0]?.cropName ?? order.cropName ?? "your crop";
+        await Notification.create({
+          user: buyerId,
+          type: "order_cancelled",
+          title: `Order Cancelled — ${cropName}`,
+          message: `Your order for ${cropName} has been cancelled by the farmer. Contact the farmer for more details.`,
+          data: { orderId: order._id, farmerId },
+          priority: "high",
+        }).catch(() => {});
+      }
+    }
+  }
+
   return order;
-};
+};;
 
 /* ───── Sales Analytics ───────────────────────────────────────────── */
 

@@ -409,6 +409,124 @@ const fetchOpenWeatherSnapshot = async (locationInput) => {
   });
 };
 
+/* ── Open-Meteo (free, no API key) ─────────────────────────────────── */
+
+const geocodeLocation = async (locationQuery) => {
+  const url = new URL("https://geocoding-api.open-meteo.com/v1/search");
+  url.searchParams.set("name", locationQuery);
+  url.searchParams.set("count", "1");
+  url.searchParams.set("language", "en");
+  url.searchParams.set("format", "json");
+  const data = await requestJson(url.toString());
+  const result = data?.results?.[0];
+  if (!result) throw new Error(`Could not geocode location: ${locationQuery}`);
+  return {
+    lat: Number(result.latitude),
+    lon: Number(result.longitude),
+    city: String(result.name || locationQuery),
+    state: String(result.admin1 || ""),
+    displayName: String(result.name || locationQuery),
+  };
+};
+
+const WMO_CONDITION = {
+  0: "Clear", 1: "Partly Cloudy", 2: "Partly Cloudy", 3: "Cloudy",
+  45: "Foggy", 48: "Foggy",
+  51: "Drizzle", 53: "Drizzle", 55: "Drizzle",
+  61: "Rainy", 63: "Rainy", 65: "Heavy Rain",
+  71: "Snowy", 73: "Snowy", 75: "Heavy Snow",
+  80: "Rainy", 81: "Rainy", 82: "Heavy Rain",
+  95: "Thunderstorm", 96: "Thunderstorm", 99: "Thunderstorm",
+};
+
+const fetchOpenMeteoSnapshot = async (locationInput) => {
+  let resolved;
+  if (locationInput.lat !== null && locationInput.lon !== null) {
+    resolved = { lat: locationInput.lat, lon: locationInput.lon, city: locationInput.city, state: locationInput.state, displayName: locationInput.name };
+  } else {
+    resolved = await geocodeLocation(locationInput.query);
+  }
+
+  const url = new URL("https://api.open-meteo.com/v1/forecast");
+  url.searchParams.set("latitude", String(resolved.lat));
+  url.searchParams.set("longitude", String(resolved.lon));
+  url.searchParams.set("current", "temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,cloud_cover,uv_index");
+  url.searchParams.set("daily", "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max,relative_humidity_2m_max");
+  url.searchParams.set("timezone", "auto");
+  url.searchParams.set("forecast_days", "7");
+
+  const raw = await requestJson(url.toString());
+
+  const cur = raw.current || {};
+  const daily = raw.daily || {};
+  const wmoCode = toNumber(cur.weather_code, 0);
+  const condition = WMO_CONDITION[wmoCode] || "Partly Cloudy";
+  const temperature = Math.round(toNumber(cur.temperature_2m, 30));
+  const humidity = Math.round(clamp(toNumber(cur.relative_humidity_2m, 60), 0, 100));
+  const windSpeed = Math.round(clamp(toNumber(cur.wind_speed_10m, 10), 0, 140));
+  const cloudCoverage = Math.round(clamp(toNumber(cur.cloud_cover, 40), 0, 100));
+  const uvIndex = Math.round(clamp(toNumber(cur.uv_index, 5), 0, 14));
+  const feelsLike = Math.round(toNumber(cur.apparent_temperature, temperature));
+
+  const days = (daily.time || []).slice(0, 7);
+  const forecast = days.map((dateStr, i) => {
+    const date = new Date(dateStr);
+    const maxTemp = Math.round(toNumber((daily.temperature_2m_max || [])[i], temperature));
+    const minTemp = Math.round(toNumber((daily.temperature_2m_min || [])[i], temperature - 4));
+    const rainProb = Math.round(clamp(toNumber((daily.precipitation_probability_max || [])[i], 30), 0, 100));
+    const wCode = toNumber((daily.weather_code || [])[i], 0);
+    const dayHumidity = Math.round(clamp(toNumber((daily.relative_humidity_2m_max || [])[i], humidity), 0, 100));
+    const dayWind = Math.round(clamp(toNumber((daily.wind_speed_10m_max || [])[i], windSpeed), 0, 140));
+    return {
+      dateISO: date.toISOString(),
+      day: dayLabel(date, false),
+      dayShort: dayLabel(date, true),
+      temperature: Math.round((maxTemp + minTemp) / 2),
+      minTemp,
+      maxTemp,
+      humidity: dayHumidity,
+      windSpeed: dayWind,
+      rainProbability: rainProb,
+      cloudCoverage: Math.round(clamp((dayHumidity + rainProb) / 2, 10, 98)),
+      condition: WMO_CONDITION[wCode] || "Partly Cloudy",
+    };
+  });
+
+  const firstDay = forecast[0] || {};
+  const rainProbability = firstDay.rainProbability ?? 30;
+  const rainfall = Number((rainProbability * 0.1).toFixed(1));
+
+  const current = {
+    temperature,
+    humidity,
+    windSpeed,
+    rainfall,
+    rainProbability,
+    cloudCoverage,
+    uvIndex,
+    condition,
+    feelsLike,
+    updatedAt: new Date().toISOString(),
+    location: resolved.displayName,
+  };
+
+  return {
+    current,
+    forecast,
+    source: "open-meteo",
+    location: {
+      name: resolved.displayName,
+      city: resolved.city,
+      state: resolved.state,
+      lat: Number(resolved.lat.toFixed(4)),
+      lon: Number(resolved.lon.toFixed(4)),
+      query: locationInput.query,
+      key: buildCacheKey({ lat: resolved.lat, lon: resolved.lon, query: locationInput.query }),
+    },
+    cached: false,
+  };
+};
+
 export const getWeatherSnapshot = async ({ query = {}, user = {}, forceFresh = false }) => {
   const locationInput = resolveLocationInput({ query, user });
   const cacheKey = buildCacheKey(locationInput);
@@ -431,7 +549,7 @@ export const getWeatherSnapshot = async ({ query = {}, user = {}, forceFresh = f
     if (WEATHER_PROVIDER === "openweather" && OPENWEATHER_API_KEY) {
       snapshot = await fetchOpenWeatherSnapshot(locationInput);
     } else {
-      throw new Error("Weather provider credentials are not configured");
+      snapshot = await fetchOpenMeteoSnapshot(locationInput);
     }
   } catch (_error) {
     snapshot = buildFallbackSnapshot(locationInput);

@@ -1,10 +1,10 @@
 import { useMemo, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Package, RefreshCw, CheckCircle2, Search,
-  ShoppingBag, Truck, Clock, XCircle, BarChart2, Filter,
+  ShoppingBag, Truck, Clock, XCircle, BarChart2, Filter, MessageCircle, AlertTriangle,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { fetchBuyerOrders } from "../../services/orderAPI.js";
@@ -12,6 +12,7 @@ import useOrderStore from "../../store/orderStore.js";
 import OrderCard from "../../components/orders/OrderCard.jsx";
 import OrdersSkeleton from "../../components/orders/OrdersSkeleton.jsx";
 import useOrderStatusSocket from "../../hooks/useOrderStatusSocket.js";
+import useOfferSocket from "../../hooks/useOfferSocket.js";
 
 const FILTERS = [
   { value: "all",             label: "All Orders",  icon: ShoppingBag },
@@ -33,12 +34,31 @@ const STAT_CONFIG = [
 export default function Orders() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const showSuccess = searchParams.get("success") === "1";
   const { statusFilter, setStatusFilter } = useOrderStore();
   const [search, setSearch] = useState("");
+  const [cancelledBanner, setCancelledBanner] = useState(null); // { orderId, cropName, farmerId }
 
-  // Real-time order status updates from admin panel
-  useOrderStatusSocket({ queryKeys: ["buyer-orders"], showToast: true });
+  // Real-time order status updates — admin or farmer changes
+  useOrderStatusSocket({ queryKeys: ["buyer-orders"], showToast: false });
+
+  // Real-time: farmer cancels order → show banner + toast
+  useOfferSocket({
+    order_update: (payload) => {
+      qc.invalidateQueries({ queryKey: ["buyer-orders"] });
+      const status = payload?.orderStatus ?? payload?.order?.orderStatus;
+      if (status === "cancelled") {
+        const order = payload?.order;
+        const cropName = order?.items?.[0]?.cropName ?? order?.cropName ?? "your order";
+        const farmerId = order?.farmer?._id ?? order?.farmer;
+        setCancelledBanner({ orderId: payload.orderId, cropName, farmerId });
+        toast.error(`Order for ${cropName} was cancelled by the farmer.`, { duration: 6000 });
+      } else if (status) {
+        toast(`Order status updated: ${status}`, { icon: "📦", duration: 3000 });
+      }
+    },
+  });
 
   const { data: orders, isLoading, isError, refetch } = useQuery({
     queryKey: ["buyer-orders"],
@@ -100,6 +120,32 @@ export default function Orders() {
                 <p className="text-green-800 font-semibold text-sm">Order placed successfully</p>
                 <p className="text-green-600 text-xs mt-0.5">Your payment was confirmed and the order is being processed.</p>
               </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Cancellation banner */}
+        <AnimatePresence>
+          {cancelledBanner && (
+            <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+              className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-2xl px-5 py-4">
+              <AlertTriangle size={20} className="text-red-600 shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-red-800 font-semibold text-sm">Order Cancelled</p>
+                <p className="text-red-600 text-xs mt-0.5">
+                  Your order for <span className="font-semibold">{cancelledBanner.cropName}</span> was cancelled by the farmer.
+                  For any queries, please contact the farmer directly.
+                </p>
+                {cancelledBanner.farmerId && (
+                  <button
+                    onClick={() => navigate(`/buyer/chat?farmerId=${cancelledBanner.farmerId}`)}
+                    className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-red-700 hover:text-red-900 underline underline-offset-2"
+                  >
+                    <MessageCircle size={12} /> Chat with Farmer
+                  </button>
+                )}
+              </div>
+              <button onClick={() => setCancelledBanner(null)} className="text-red-400 hover:text-red-600 text-sm shrink-0">✕</button>
             </motion.div>
           )}
         </AnimatePresence>

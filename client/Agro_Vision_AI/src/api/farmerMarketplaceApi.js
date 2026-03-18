@@ -9,6 +9,7 @@ export const getEarnings          = ()       => api.get(`${BASE}/earnings`).then
 export const getMarketInsights    = (crop)   => api.get(`${BASE}/market-insights`, { params: { crop } }).then(unwrap);
 export const getBuyerRequests     = ()       => api.get(`${BASE}/buyer-requests`).then(unwrap);
 export const getRecentOrders      = (p = {}) => api.get(`${BASE}/orders`, { params: p }).then(unwrap);
+export const updateCropOrder      = (id, body) => api.patch(`${BASE}/orders/${id}`, body).then(unwrap);
 export const getMarketReviews     = ()       => api.get(`${BASE}/reviews`).then(unwrap);
 export const getAIPriceSuggestion = (body)   => api.post(`${BASE}/ai-price`, body).then(unwrap);
 export const getInventory         = ()       => api.get(`${BASE}/inventory`).then(unwrap);
