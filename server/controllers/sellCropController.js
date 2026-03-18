@@ -164,12 +164,25 @@ export const farmerRespondOffer = async (req, res) => {
     // ── Notify buyer via socket ──────────────────────────────────────
     if (io && buyerId) {
       if (action === "accept") {
+        const cropListingId = offer.cropListing?._id ?? offer.cropListing;
         io.to(`user:${buyerId}`).emit("offer_accepted", {
           offerId: offer._id,
-          cropListingId: offer.cropListing?._id ?? offer.cropListing,
+          cropListingId,
           offerPrice: offer.offerPrice,
           cropName,
           message: `Your offer of ₹${offer.offerPrice} for ${cropName} was accepted!`,
+        });
+        // Broadcast price update to all buyers so marketplace reflects the negotiated price
+        io.to("buyers").emit("crop_price_update", {
+          cropId: String(cropListingId),
+          price: offer.offerPrice,
+          cropName,
+        });
+        // Also notify the farmer's own socket so their listings tab updates
+        io.to(`user:${farmerId}`).emit("crop_price_update", {
+          cropId: String(cropListingId),
+          price: offer.offerPrice,
+          cropName,
         });
       } else if (action === "reject") {
         io.to(`user:${buyerId}`).emit("offer_rejected", {

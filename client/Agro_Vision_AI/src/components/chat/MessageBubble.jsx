@@ -1,8 +1,3 @@
-/**
- * MessageBubble — renders a single chat message.
- * Buyer messages align right, farmer messages align left.
- * Supports text, image, and order_reference types.
- */
 import { motion } from "framer-motion";
 import { Check, CheckCheck, Package } from "lucide-react";
 
@@ -27,10 +22,10 @@ export default function MessageBubble({ message, isMine }) {
       animate={{ opacity: 1, y: 0 }}
       className={`flex items-end gap-2 px-4 py-1 ${isMine ? "flex-row-reverse" : "flex-row"}`}
     >
-      {/* Avatar placeholder */}
       <div className={`w-6 h-6 rounded-full shrink-0 ${isMine ? "bg-green-200" : "bg-slate-200"}`} />
 
       <div className={`max-w-[72%] ${isMine ? "items-end" : "items-start"} flex flex-col gap-0.5`}>
+
         {/* Text message */}
         {messageType === "text" && (
           <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed shadow-sm
@@ -43,7 +38,7 @@ export default function MessageBubble({ message, isMine }) {
           </div>
         )}
 
-        {/* Image message */}
+        {/* Image message — shown for both sender and receiver */}
         {messageType === "image" && imageUrl && (
           <div className={`rounded-2xl overflow-hidden shadow-sm border
             ${isMine ? "border-green-600 rounded-br-sm" : "border-slate-100 rounded-bl-sm"}`}
@@ -52,7 +47,8 @@ export default function MessageBubble({ message, isMine }) {
               src={imageUrl}
               alt="Shared image"
               loading="lazy"
-              className="max-w-[220px] max-h-[220px] object-cover"
+              className="max-w-[220px] max-h-[220px] object-cover block"
+              onError={(e) => { e.target.style.display = "none"; }}
             />
           </div>
         )}
@@ -69,9 +65,9 @@ export default function MessageBubble({ message, isMine }) {
               <Package size={13} />
               <span className="text-xs font-semibold uppercase tracking-wide">Order Reference</span>
             </div>
-            {orderRef.orderId   && <p className="font-semibold">#{orderRef.orderId}</p>}
-            {orderRef.cropName  && <p className="text-xs opacity-80">Crop: {orderRef.cropName}</p>}
-            {orderRef.quantity  && <p className="text-xs opacity-80">Qty: {orderRef.quantity} kg</p>}
+            {orderRef.orderId    && <p className="font-semibold">#{orderRef.orderId}</p>}
+            {orderRef.cropName   && <p className="text-xs opacity-80">Crop: {orderRef.cropName}</p>}
+            {orderRef.quantity   && <p className="text-xs opacity-80">Qty: {orderRef.quantity} kg</p>}
             {orderRef.totalAmount && (
               <p className="text-xs opacity-80">Total: {formatCurrency(orderRef.totalAmount)}</p>
             )}

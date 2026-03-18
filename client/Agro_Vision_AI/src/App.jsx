@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import ProtectedRoute from "./components/shared/ProtectedRoute";
 import MainLayout from "./components/shared/MainLayout";
 import { Toaster } from "react-hot-toast";
@@ -20,7 +20,6 @@ import FarmerMarketplace from "./pages/farmer/Marketplace";
 import SellCrop from "./pages/farmer/SellCrop";
 import FarmerAdvisory from "./pages/farmer/Advisory";
 import Weather from "./pages/farmer/Weather";
-import SatelliteMonitoring from "./pages/farmer/SatelliteMonitoring";
 import FarmGPT from "./pages/farmer/FarmGPT";
 import FarmManager from "./pages/farmer/FarmManager";
 import CropCalendar from "./pages/farmer/CropCalendar";
@@ -41,6 +40,7 @@ import Chat from "./pages/buyer/Chat";
 import Wallet from "./pages/buyer/Wallet";
 import Analytics from "./pages/buyer/Analytics";
 import BuyerAdvisory from "./pages/buyer/Advisory";
+import BuyerProfile from "./pages/buyer/BuyerProfile";
 
 /* Expert Pages */
 import ExpertDashboard from "./pages/expert/ExpertDashboard";
@@ -141,7 +141,6 @@ function App() {
             <Route path="/farmer/sell-crop" element={<SellCrop />} />
             <Route path="/farmer/advisory" element={<FarmerAdvisory />} />
             <Route path="/farmer/weather" element={<Weather />} />
-            <Route path="/farmer/satellite-monitoring" element={<SatelliteMonitoring />} />
             <Route path="/farmer/farmgpt" element={<FarmGPT />} />
             <Route path="/farmer/farm-manager" element={<FarmManager />} />
             <Route path="/farmer/crop-calendar" element={<CropCalendar />} />
@@ -173,7 +172,7 @@ function App() {
             <Route path="/buyer/consultation" element={<ConsultationRequestPage />} />
             <Route path="/buyer/schedule" element={<SchedulePage />} />
             <Route path="/buyer/advisory" element={<BuyerAdvisory />} />
-            <Route path="/buyer/profile" element={<Navigate to="/buyer/dashboard" replace />} />
+            <Route path="/buyer/profile" element={<BuyerProfile />} />
           </Route>
 
           {/* Expert */}

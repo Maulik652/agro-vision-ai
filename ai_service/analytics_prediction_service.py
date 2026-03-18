@@ -3,10 +3,14 @@ Analytics Prediction Service — AgroVision AI
 Stacked ensemble: XGBoost + RandomForest → Ridge meta-learner.
 14 features, 5000 training samples, seasonal + MSP + supply shock signals.
 
+Models are trained once and persisted to disk via joblib.
+On subsequent startups the saved models are loaded directly — no retraining.
+
 Run:
-    uvicorn analytics_prediction_service:app --host 0.0.0.0 --port 8001 --reload
+    uvicorn analytics_prediction_service:app --host 0.0.0.0 --port 8003 --reload
 """
 from __future__ import annotations
+import os
 from typing import List, Optional
 import math
 import numpy as np
@@ -16,6 +20,12 @@ from pydantic import BaseModel, Field
 from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor
 from sklearn.linear_model import Ridge
 from sklearn.preprocessing import StandardScaler
+
+try:
+    import joblib
+    HAS_JOBLIB = True
+except Exception:
+    HAS_JOBLIB = False
 
 try:
     from xgboost import XGBRegressor
@@ -242,10 +252,36 @@ def _train_stacked_ensemble(seed: int = 42):
     }
 
 
-print("Training stacked ensemble models...")
-ENSEMBLE = _train_stacked_ensemble()
-print("Models ready.")
+_MODEL_DIR = os.path.join(os.path.dirname(__file__), "saved_models")
+_ENSEMBLE_PATH = os.path.join(_MODEL_DIR, "analytics_ensemble.joblib")
 
+
+def _load_or_train_ensemble() -> dict:
+    """Load persisted ensemble from disk; train and save if not found."""
+    if HAS_JOBLIB and os.path.exists(_ENSEMBLE_PATH):
+        try:
+            ensemble = joblib.load(_ENSEMBLE_PATH)
+            print(f"Loaded analytics ensemble from {_ENSEMBLE_PATH}")
+            return ensemble
+        except Exception as exc:
+            print(f"Failed to load saved ensemble ({exc}), retraining...")
+
+    print("Training stacked ensemble models (first run — will be saved for future startups)...")
+    ensemble = _train_stacked_ensemble()
+
+    if HAS_JOBLIB:
+        os.makedirs(_MODEL_DIR, exist_ok=True)
+        try:
+            joblib.dump(ensemble, _ENSEMBLE_PATH)
+            print(f"Ensemble saved to {_ENSEMBLE_PATH}")
+        except Exception as exc:
+            print(f"Warning: could not save ensemble ({exc})")
+
+    print("Models ready.")
+    return ensemble
+
+
+ENSEMBLE = _load_or_train_ensemble()
 
 # ── Prediction helpers ────────────────────────────────────────────────────────
 def _predict(

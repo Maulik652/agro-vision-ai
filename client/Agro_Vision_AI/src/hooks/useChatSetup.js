@@ -1,45 +1,55 @@
 /**
  * useChatSetup — shared hook for both BuyerChatPage and FarmerChatPage.
- * Connects the socket, fetches conversations, and wires global socket events.
+ * Connects the /chat socket, fetches conversations, and wires global socket events.
+ *
+ * The socket is a singleton — we connect once and keep it alive across page
+ * navigations. We only disconnect on explicit logout (handled in AuthContext).
  */
 import { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchConversations } from "../services/chatAPI.js";
-import { connectChatSocket, disconnectChatSocket, getChatSocket } from "../services/chatSocket.js";
+import { connectChatSocket, getChatSocket } from "../services/chatSocket.js";
 import useChatStore from "../store/chatStore.js";
 
 export default function useChatSetup(user) {
   const qc = useQueryClient();
-  const { setUserOnline, setUserOffline, appendMessage } = useChatStore();
+  const { setUserOnline, setUserOffline } = useChatStore();
 
-  /* ── Connect socket on mount ─────────────────────────────── */
+  /* ── Connect socket once per user session ────────────────── */
   useEffect(() => {
     if (!user) return;
     const token = localStorage.getItem("token");
     const socket = connectChatSocket(token);
 
-    socket.on("user_online",  ({ userId }) => setUserOnline(userId));
-    socket.on("user_offline", ({ userId }) => setUserOffline(userId));
+    // Avoid re-registering listeners if already connected
+    if (socket.hasListeners?.("user_online")) return;
 
-    // new_message: update conversation list badge from outside active window
-    socket.on("new_message", ({ conversationId, message }) => {
-      appendMessage(conversationId, message);
+    const onOnline  = ({ userId }) => setUserOnline(userId);
+    const onOffline = ({ userId }) => setUserOffline(userId);
+    const onNewMsg  = ({ conversationId, message }) => {
+      // Only update conversation list badge — ChatWindow handles appending
+      // messages for the active conversation via receive_message
       qc.invalidateQueries({ queryKey: ["conversations"] });
-    });
-
-    return () => {
-      socket.off("user_online");
-      socket.off("user_offline");
-      socket.off("new_message");
-      disconnectChatSocket();
     };
-  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    socket.on("user_online",  onOnline);
+    socket.on("user_offline", onOffline);
+    socket.on("new_message",  onNewMsg);
+
+    // Cleanup listeners only — do NOT disconnect the socket
+    // (it's a singleton; disconnecting here would break ChatWindow)
+    return () => {
+      socket.off("user_online",  onOnline);
+      socket.off("user_offline", onOffline);
+      socket.off("new_message",  onNewMsg);
+    };
+  }, [user?._id ?? user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ── Fetch conversations ─────────────────────────────────── */
   const { data: conversations = [], isLoading } = useQuery({
     queryKey: ["conversations"],
     queryFn:  fetchConversations,
-    staleTime: 60_000,
+    staleTime: 30_000,
     enabled:  !!user,
   });
 

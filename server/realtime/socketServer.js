@@ -4,6 +4,7 @@ import mongoose from "mongoose";
 import CropListing from "../models/CropListing.js";
 import CropChatMessage from "../models/CropChatMessage.js";
 import { registerChatNamespace } from "./chatNamespace.js";
+import { registerAdminNamespace } from "./adminNamespace.js";
 
 let ioInstance = null;
 const CHAT_HISTORY_LIMIT = 40;
@@ -118,6 +119,8 @@ export const initializeSocketServer = (httpServer, { allowedOrigins = [] } = {})
 
   // Register the dedicated buyer↔farmer chat namespace
   registerChatNamespace(ioInstance);
+  // Register the admin real-time namespace
+  registerAdminNamespace(ioInstance);
 
   ioInstance.use((socket, next) => {
     const token = extractSocketToken(socket);

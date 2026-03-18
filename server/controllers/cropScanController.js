@@ -1,24 +1,14 @@
-import { spawn } from "child_process";
-import path from "path";
-import { fileURLToPath } from "url";
 import multer from "multer";
 import ScanHistory from "../models/ScanHistory.js";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname  = path.dirname(__filename);
-
 /* ── Configuration ─────────────────────────────────────────────────────────── */
-const PYTHON_EXECUTABLE = process.env.PYTHON_EXECUTABLE || "python";
-const AI_SERVICE_DIR    = path.resolve(__dirname, "..", "..", "ai_service");
-const CROP_SCAN_CLI     = path.join(AI_SERVICE_DIR, "crop_scan_cli.py");
+/** FastAPI microservice URL */
+const FASTAPI_URL = (process.env.CROP_SCAN_API_URL || "http://127.0.0.1:8001").trim();
 
-/** Optional FastAPI microservice URL.  Set CROP_SCAN_API_URL env var to enable. */
-const FASTAPI_URL = (process.env.CROP_SCAN_API_URL || "").trim();
-
-/* ── Multer: in-memory storage, max 10 MB, JPG/PNG only ─────────────────────── */
+/* ── Multer: in-memory storage, max 5 MB, JPG/PNG only ─────────────────────── */
 const _multerInstance = multer({
   storage: multer.memoryStorage(),
-  limits:  { fileSize: 10 * 1024 * 1024 },
+  limits:  { fileSize: 5 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     const allowed = ["image/jpeg", "image/jpg", "image/png"];
     if (allowed.includes(file.mimetype.toLowerCase())) {
@@ -56,119 +46,116 @@ const normalizeResult = (raw) => ({
   prevention: Array.isArray(raw.prevention) ? raw.prevention : [],
 });
 
-/* ── FastAPI call (optional, requires CROP_SCAN_API_URL env var) ────────────── */
-const callFastAPI = async (imageBuffer, mimeType, cropType) => {
-  if (!FASTAPI_URL || typeof globalThis.fetch !== "function") return null;
+/* ── FastAPI call ────────────────────────────────────────────────────────────── */
+const callFastAPI = async (imageBuffer, mimeType, cropType, scanType = "auto") => {
+  const body = new FormData();
+  body.append("image",    new Blob([imageBuffer], { type: mimeType }), "image.jpg");
+  body.append("cropType", cropType);
+  body.append("scanType", scanType);
 
-  try {
-    const body = new FormData();
-    body.append("image",    new Blob([imageBuffer], { type: mimeType }), "image.jpg");
-    body.append("cropType", cropType);
-
-    const res = await globalThis.fetch(FASTAPI_URL, {
-      method: "POST",
-      body,
-      signal: AbortSignal.timeout(15_000),
-    });
-
-    if (!res.ok) return null;
-    return res.json();
-  } catch {
-    return null;
-  }
-};
-
-/* ── Python CLI fallback ─────────────────────────────────────────────────────── */
-const callPythonCLI = (imageBuffer, mimeType, cropType) =>
-  new Promise((resolve, reject) => {
-    const payload = JSON.stringify({
-      imageBase64: imageBuffer.toString("base64"),
-      mimeType,
-      cropType,
-    });
-
-    const child = spawn(PYTHON_EXECUTABLE, [CROP_SCAN_CLI], {
-      cwd:   AI_SERVICE_DIR,
-      stdio: ["pipe", "pipe", "pipe"],
-    });
-
-    let stdout = "";
-    let stderr = "";
-
-    child.stdout.on("data", (chunk) => { stdout += chunk.toString(); });
-    child.stderr.on("data", (chunk) => { stderr += chunk.toString(); });
-
-    child.on("close", (code) => {
-      if (code !== 0) {
-        try {
-          const parsed = JSON.parse(stdout.trim());
-          if (parsed.error === "NOT_A_CROP_IMAGE") {
-            const err = new Error("NOT_A_CROP_IMAGE");
-            err.isNotCropImage = true;
-            return reject(err);
-          }
-        } catch { /* ignore parse error, fall through */ }
-        return reject(new Error(`Python CLI exited ${code}: ${stderr.slice(0, 400)}`));
-      }
-      try {
-        const parsed = JSON.parse(stdout.trim());
-        if (parsed.error === "NOT_A_CROP_IMAGE") {
-          const err = new Error("NOT_A_CROP_IMAGE");
-          err.isNotCropImage = true;
-          return reject(err);
-        }
-        if (parsed.error) return reject(new Error(parsed.error));
-        resolve(parsed);
-      } catch {
-        reject(new Error("Failed to parse Python CLI JSON output"));
-      }
-    });
-
-    child.on("error", reject);
-
-    child.stdin.write(payload);
-    child.stdin.end();
+  const res = await globalThis.fetch(`${FASTAPI_URL}/predict`, {
+    method: "POST",
+    body,
+    signal: AbortSignal.timeout(15_000),
   });
+
+  if (!res.ok) {
+    throw new Error(`Crop scan service returned ${res.status}`);
+  }
+
+  return res.json();
+};
 
 /* ── Main controller ─────────────────────────────────────────────────────────── */
 
 /**
  * POST /api/ai/crop-scan
- * Accepts: multipart/form-data { image: File, cropType: string }
- * Returns: disease prediction JSON as specified in the API contract
+ * Accepts: multipart/form-data { image: File, cropType: string, scanType: string }
+ * Returns: { success: boolean, message: string, data: prediction | null }
  */
 export const aiCropScan = async (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ message: "Image file is required" });
+      return res.status(400).json({
+        success: false,
+        message: "Image file is required.",
+        data: null,
+      });
+    }
+
+    // ── Re-validate MIME type on the server (security layer) ──────────────────
+    const allowedMimes = ["image/jpeg", "image/jpg", "image/png"];
+    const mimeType = (req.file.mimetype || "").toLowerCase();
+    if (!allowedMimes.includes(mimeType)) {
+      return res.status(400).json({
+        success: false,
+        message: "Only JPG and PNG images are accepted.",
+        data: null,
+      });
+    }
+
+    // ── File size guard (belt-and-suspenders beyond multer) ───────────────────
+    if (req.file.size > 5 * 1024 * 1024) {
+      return res.status(400).json({
+        success: false,
+        message: "File size must be less than 5MB.",
+        data: null,
+      });
     }
 
     const cropType    = String(req.body?.cropType || "tomato").toLowerCase().trim() || "tomato";
-    const mimeType    = (req.file.mimetype || "image/jpeg").toLowerCase();
+    const scanType    = String(req.body?.scanType || "auto").toLowerCase().trim();
     const imageBuffer = req.file.buffer;
 
-    /* Attempt FastAPI → CLI */
-    let rawResult = await callFastAPI(imageBuffer, mimeType, cropType);
-
-    if (!rawResult) {
-      try {
-        rawResult = await callPythonCLI(imageBuffer, mimeType, cropType);
-      } catch (cliError) {
-        // Non-crop image — return 422 with clear message, no fallback
-        if (cliError.isNotCropImage) {
-          return res.status(422).json({
-            error: "NOT_A_CROP_IMAGE",
-            message: "This doesn't look like a crop image. Please upload a clear photo of a plant leaf or crop field.",
-          });
-        }
-        console.error("cropScan CLI error:", cliError.message);
-        return res.status(503).json({ message: "AI scan service temporarily unavailable. Please try again." });
+    let rawResult;
+    try {
+      rawResult = await callFastAPI(imageBuffer, mimeType, cropType, scanType);
+    } catch (apiError) {
+      if (apiError.isNotCropImage) {
+        return res.status(422).json({
+          success: false,
+          error: "NOT_A_CROP_IMAGE",
+          message: "Invalid image. Please upload a crop/plant image.",
+          data: null,
+        });
       }
+      if (apiError.isBlurry) {
+        return res.status(422).json({
+          success: false,
+          error: "BLURRY_IMAGE",
+          message: "Image is too blurry. Upload a clear image.",
+          data: null,
+        });
+      }
+      if (apiError.isInvalidScanType) {
+        return res.status(422).json({
+          success: false,
+          error: "INVALID_SCAN_TYPE",
+          message: apiError.message || "Image does not match the selected scan type.",
+          data: null,
+        });
+      }
+      console.error("cropScan API error:", apiError.message);
+      return res.status(503).json({
+        success: false,
+        message: "AI scan service temporarily unavailable. Please try again.",
+        data: null,
+      });
     }
 
     const result = normalizeResult(rawResult);
 
-    /* Persist to ScanHistory — non-critical, do not fail the request */
+    // ── Confidence threshold check (< 60% = unclear image) ───────────────────
+    if (result.confidence < 0.60) {
+      return res.status(422).json({
+        success: false,
+        error: "LOW_CONFIDENCE",
+        message: "Unclear image. Please upload a better quality image.",
+        data: null,
+      });
+    }
+
+    /* Persist to ScanHistory — non-critical */
     ScanHistory.create({
       farmerId:        req.user._id,
       cropType,
@@ -183,10 +170,19 @@ export const aiCropScan = async (req, res) => {
       date:            new Date(),
     }).catch((err) => console.error("ScanHistory save error:", err.message));
 
-    return res.status(200).json(result);
+    return res.status(200).json({
+      success: true,
+      message: "Scan completed successfully.",
+      data: result,
+    });
+
   } catch (error) {
     console.error("aiCropScan handler error:", error.message);
-    return res.status(500).json({ message: "AI scan service temporarily unavailable" });
+    return res.status(500).json({
+      success: false,
+      message: "AI scan service temporarily unavailable.",
+      data: null,
+    });
   }
 };
 

@@ -1,6 +1,7 @@
 import { getCache, setCache, deleteCache } from "../config/redis.js";
 import * as svc from "../services/orderService.js";
 import { emitAnalyticsUpdate } from "../realtime/analyticsNamespace.js";
+import { emitAdminActivity } from "../realtime/adminNamespace.js";
 
 const err = (res, e) => res.status(e.status ?? 500).json({ success: false, message: e.message });
 
@@ -31,6 +32,8 @@ export const createOrder = async (req, res) => {
     await deleteCache(`analytics_buyer_${buyerId}_30d_all`);
     // Notify analytics page via socket
     emitAnalyticsUpdate(buyerId, "order", { orderId: data.parentOrderId, totalAmount: data.grandTotal });
+    // Push to admin live activity feed
+    emitAdminActivity({ type: "order", message: `New order #${String(data.parentOrderId).slice(-6)}`, time: new Date().toISOString() });
     res.status(201).json({ success: true, data });
   } catch (e) { err(res, e); }
 };

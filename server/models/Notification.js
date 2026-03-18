@@ -51,4 +51,23 @@ const notificationSchema = new mongoose.Schema(
 
 notificationSchema.index({ user: 1, read: 1, createdAt: -1 });
 
+// Push new notifications in real-time
+notificationSchema.post("save", function (doc) {
+  if (!doc.__v || doc.__v === 0) {
+    // Emit to admin namespace
+    import("../realtime/adminNamespace.js")
+      .then(({ emitAdminNotification }) => emitAdminNotification(doc.toObject()))
+      .catch(() => {});
+    // Emit to the user's personal socket room
+    import("../realtime/socketServer.js")
+      .then(({ getSocketServer }) => {
+        const io = getSocketServer();
+        if (io && doc.user) {
+          io.to(`user:${String(doc.user)}`).emit("new_notification", doc.toObject());
+        }
+      })
+      .catch(() => {});
+  }
+});
+
 export default mongoose.model("Notification", notificationSchema);

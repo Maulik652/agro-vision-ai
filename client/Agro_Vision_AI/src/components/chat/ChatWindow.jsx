@@ -18,8 +18,8 @@ import OrderContextBanner from "./OrderContextBanner.jsx";
 import EmptyChat          from "./EmptyChat.jsx";
 
 export default function ChatWindow({ conversation, currentUserId, onBack }) {
-  const convId = conversation?._id;
-  const qc     = useQueryClient();
+  const convId    = conversation?._id;
+  const qc        = useQueryClient();
   const bottomRef = useRef(null);
 
   const {
@@ -31,15 +31,19 @@ export default function ChatWindow({ conversation, currentUserId, onBack }) {
   const messages = messagesByConv[convId] ?? [];
 
   /* ── Fetch message history ──────────────────────────────── */
-  const { isLoading, isError, refetch } = useQuery({
+  const { isLoading, isError, refetch, data } = useQuery({
     queryKey: ["messages", convId],
     queryFn:  () => fetchMessages(convId),
     enabled:  !!convId,
     staleTime: 0,
-    onSuccess: (data) => {
-      setMessages(convId, data.messages ?? []);
-    },
   });
+
+  // Sync fetched messages into store (replaces deprecated onSuccess)
+  useEffect(() => {
+    if (data?.messages) {
+      setMessages(convId, data.messages);
+    }
+  }, [data, convId, setMessages]);
 
   /* ── Join socket room + bind events ─────────────────────── */
   useEffect(() => {
@@ -52,19 +56,23 @@ export default function ChatWindow({ conversation, currentUserId, onBack }) {
     socket.emit("message_read", { conversationId: convId });
 
     const onMessage = (msg) => {
-      if (String(msg.conversation) === convId || String(msg.conversation?._id) === convId) {
-        appendMessage(convId, msg);
-        // Auto-mark read since window is open
-        markRead(convId).catch(() => {});
-        socket.emit("message_read", { conversationId: convId });
-        qc.invalidateQueries({ queryKey: ["conversations"] });
-      }
+      const msgConvId = String(msg.conversation ?? msg.conversationId ?? "");
+      // Only handle messages for this conversation
+      if (msgConvId && msgConvId !== convId) return;
+      appendMessage(convId, msg);
+      // Auto-mark read since window is open
+      markRead(convId).catch(() => {});
+      socket.emit("message_read", { conversationId: convId });
+      qc.invalidateQueries({ queryKey: ["conversations"] });
     };
 
-    const onDelivered = ({ messageId }) => updateMessageStatus(convId, messageId, "delivered");
-    const onRead      = () => {
-      messages.forEach((m) => {
-        if (m.sender === currentUserId) updateMessageStatus(convId, m._id, "read");
+    const onDelivered  = ({ messageId }) => updateMessageStatus(convId, messageId, "delivered");
+    const onRead       = () => {
+      // Mark all my sent messages as read
+      useChatStore.getState().messagesByConv[convId]?.forEach((m) => {
+        if (String(m.sender) === currentUserId || String(m.sender?._id) === currentUserId) {
+          updateMessageStatus(convId, m._id, "read");
+        }
       });
     };
     const onTyping     = ({ userId }) => { if (userId !== currentUserId) addTyping(userId); };
@@ -83,7 +91,7 @@ export default function ChatWindow({ conversation, currentUserId, onBack }) {
       socket.off("typing",            onTyping);
       socket.off("stop_typing",       onStopTyping);
     };
-  }, [convId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [convId, currentUserId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ── Auto-scroll to bottom on new messages ──────────────── */
   useEffect(() => {
@@ -113,8 +121,15 @@ export default function ChatWindow({ conversation, currentUserId, onBack }) {
       <ChatHeader conversation={conversation} currentUserId={currentUserId} onBack={onBack} />
       <OrderContextBanner conversation={conversation} />
 
-      {/* Messages area */}
-      <div className="flex-1 overflow-y-auto py-3 bg-gradient-to-b from-slate-50 to-white">
+      {/* Messages area — no scrollbar */}
+      <div
+        className="flex-1 overflow-y-auto py-3 bg-gradient-to-b from-slate-50 to-white"
+        style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+      >
+        <style>{`
+          .chat-msgs-area::-webkit-scrollbar { display: none; }
+        `}</style>
+
         {isLoading && (
           <div className="flex items-center justify-center py-12">
             <RefreshCw size={20} className="text-slate-300 animate-spin" />

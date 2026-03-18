@@ -26,7 +26,7 @@ export default function useOfferSocket(handlers = {}) {
     });
     socketRef.current = socket;
 
-    const events = ["new_offer", "offer_accepted", "offer_rejected", "offer_counter", "offer_responded", "new_order", "order_paid"];
+    const events = ["new_offer", "offer_accepted", "offer_rejected", "offer_counter", "offer_responded", "new_order", "order_paid", "crop_price_update"];
     events.forEach((evt) => {
       socket.on(evt, (payload) => handlersRef.current?.[evt]?.(payload));
     });

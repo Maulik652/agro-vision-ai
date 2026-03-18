@@ -1,5 +1,9 @@
 """AgroVision AI – Crop Disease Scan CLI
 ========================================
+DEPRECATED — Not called by any backend service.
+All scan requests now go through crop_scan_api.py (port 8001) via /scan/{module}.
+This file is kept for reference only and will be removed in a future cleanup.
+
 Reads a JSON payload from stdin, runs the disease-detection + health-score
 AI pipeline, and writes a standardised JSON response to stdout.
 

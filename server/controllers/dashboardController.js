@@ -18,7 +18,7 @@ import Wallet from "../models/Wallet.js";
  */
 
 const DASHBOARD_CACHE_TTL_SECONDS = 120;
-const AI_SERVICE_URL = String(process.env.BUYER_AI_SERVICE_URL || "http://127.0.0.1:8001").replace(/\/$/, "");
+const AI_SERVICE_URL = String(process.env.BUYER_AI_SERVICE_URL || "http://127.0.0.1:8004").replace(/\/$/, "");
 
 const ACTIVE_ORDER_STATUSES = ["pending", "confirmed", "processing", "shipped"];
 const NON_CANCELLED_ORDER_STATUSES = ["pending", "confirmed", "processing", "shipped", "delivered"];

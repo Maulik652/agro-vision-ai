@@ -266,7 +266,7 @@ export const generateAIPredictions = async (buyerId) => {
     { $limit: 5 },
   ]);
 
-  const AI_SERVICE_URL = process.env.AI_ANALYTICS_URL || process.env.AI_SERVICE_URL || "http://localhost:8001";
+  const AI_SERVICE_URL = process.env.AI_ANALYTICS_URL || process.env.AI_SERVICE_URL || "http://localhost:8003";
   const currentMonth   = new Date().getMonth() + 1;
 
   // Build batch request payload

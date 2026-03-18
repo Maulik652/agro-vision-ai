@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Bell, Search, ChevronDown, LogOut, User, Shield } from "lucide-react";
+import { Bell, Search, ChevronDown, LogOut, User, Shield, Radio } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchNotificationsCenter, fetchAdminProfile } from "../../api/adminApi";
 import { useNavigate } from "react-router-dom";
+import useAdminSocket from "../../hooks/useAdminSocket";
 
 const COMMANDS = [
   { label: "Show top farmers", path: "/admin/farmers" },
@@ -25,11 +26,21 @@ export default function Topbar() {
   const cmdRef = useRef(null);
 
   const { data: profile } = useQuery({ queryKey: ["admin-profile"], queryFn: fetchAdminProfile });
-  const { data: notifications = [] } = useQuery({
+  const { data: seedNotifications = [] } = useQuery({
     queryKey: ["admin-notifications"],
     queryFn: fetchNotificationsCenter,
-    refetchInterval: 30000,
+    staleTime: Infinity, // socket keeps it fresh
   });
+
+  const { realtimeNotifications, isConnected } = useAdminSocket();
+
+  // Merge realtime + seed, deduplicated by _id
+  const notifications = [
+    ...realtimeNotifications,
+    ...seedNotifications.filter(
+      (s) => !realtimeNotifications.some((r) => String(r._id) === String(s._id))
+    ),
+  ];
 
   const filtered = COMMANDS.filter((c) =>
     c.label.toLowerCase().includes(search.toLowerCase())
@@ -84,6 +95,9 @@ export default function Topbar() {
                 <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center font-bold">
                   {Math.min(notifications.length, 9)}
                 </span>
+              )}
+              {isConnected && (
+                <span className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-emerald-500 border border-white" />
               )}
             </button>
             <AnimatePresence>

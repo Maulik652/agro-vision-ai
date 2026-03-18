@@ -66,22 +66,41 @@ export const updateListing = async (listingId, farmerId, updates) => {
     if (updates[key] !== undefined) safe[key] = updates[key];
   }
 
+  // Fetch old price before update to detect price drops
+  const oldListing = safe.price !== undefined
+    ? await CropListing.findOne({ _id: listingId, farmer: farmerId }).select("price cropName").lean()
+    : null;
+
   const listing = await CropListing.findOneAndUpdate(
     { _id: listingId, farmer: farmerId },
     { $set: safe },
     { new: true, runValidators: true }
   ).lean();
 
-  if (listing && (safe.status !== undefined || safe.isActive !== undefined || safe.quantity !== undefined)) {
-    const { emitInventoryUpdate } = await import("../realtime/socketServer.js");
-    emitInventoryUpdate(farmerId.toString(), {
-      cropId: listing._id.toString(),
-      cropName: listing.cropName,
-      quantity: listing.quantity,
-      status: listing.status,
-      isActive: listing.isActive,
-      event: "listing_updated",
-    });
+  if (listing) {
+    const { emitInventoryUpdate, emitCropPriceUpdate, emitPriceDropAlert } = await import("../realtime/socketServer.js");
+
+    if (safe.status !== undefined || safe.isActive !== undefined || safe.quantity !== undefined) {
+      emitInventoryUpdate(farmerId.toString(), {
+        cropId: listing._id.toString(),
+        cropName: listing.cropName,
+        quantity: listing.quantity,
+        status: listing.status,
+        isActive: listing.isActive,
+        event: "listing_updated",
+      });
+    }
+
+    // Emit price update events when price changes
+    if (safe.price !== undefined && oldListing) {
+      const priceData = { cropName: listing.cropName, newPrice: listing.price, oldPrice: oldListing.price };
+      emitCropPriceUpdate(listing._id.toString(), priceData);
+
+      // Emit price_drop_alert to all buyers if price dropped
+      if (listing.price < oldListing.price) {
+        emitPriceDropAlert({ crop: { ...listing, cropId: listing._id.toString() } });
+      }
+    }
   }
 
   return listing;
@@ -189,7 +208,7 @@ export const getMyOrders = async (farmerId) => {
 };
 
 export const updateOrderStatus = async (orderId, farmerId, status) => {
-  const allowed = ["confirmed", "processing", "shipped", "delivered", "cancelled"];
+  const allowed = ["confirmed", "processing", "shipped", "delivered", "completed", "cancelled"];
   if (!allowed.includes(status)) throw new Error("Invalid order status.");
 
   const order = await Order.findOneAndUpdate(

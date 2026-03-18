@@ -22,6 +22,7 @@ import {
 } from "../../api/cropDetailApi";
 import useCartStore from "../../store/cartStore.js";
 import useStockSocket from "../../hooks/useStockSocket.js";
+import useOfferSocket from "../../hooks/useOfferSocket.js";
 
 function Skeleton({ className }) {
   return <div className={`animate-pulse bg-slate-100 rounded-xl ${className}`} />;
@@ -90,6 +91,15 @@ export default function CropDetail() {
       setCrop((prev) => prev ? { ...prev, quantity, status: outOfStock ? "sold" : prev.status } : prev);
       if (outOfStock) toast("This crop is now out of stock", { icon: "⚠️" });
     }
+  });
+
+  useOfferSocket({
+    crop_price_update: ({ cropId: updatedId, price }) => {
+      if (updatedId === cropId) {
+        setCrop((prev) => prev ? { ...prev, price } : prev);
+        toast(`Price updated to ₹${price}`, { icon: "💰" });
+      }
+    },
   });
 
   const handleAddToCart = async (qty) => {

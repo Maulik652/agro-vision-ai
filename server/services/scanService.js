@@ -1,14 +1,6 @@
-import { spawn } from "child_process";
-import path from "path";
-import { fileURLToPath } from "url";
 import CropScanReport from "../models/CropScanReport.js";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-const PYTHON_EXECUTABLE = process.env.PYTHON_EXECUTABLE || "python";
-const AI_SERVICE_DIR = path.resolve(__dirname, "..", "..", "ai_service");
-const PYTHON_ENTRY_FILE = path.join(AI_SERVICE_DIR, "main_cli.py");
+const CROP_SCAN_API_URL = (process.env.CROP_SCAN_API_URL || "http://localhost:8001").replace(/\/$/, "");
 
 export const SCAN_MODULE_KEYS = ["crop", "disease", "pest", "nutrient", "health-score", "treatment"];
 
@@ -211,103 +203,26 @@ const buildDefaultAdvancedInsights = ({ modules, input, avgConfidence, healthSco
   };
 };
 
-const parsePythonOutput = (rawStdout) => {
-  const value = String(rawStdout || "").trim();
-
-  if (!value) {
-    throw new Error("Python scan module returned empty response");
-  }
-
-  const lines = value.split(/\r?\n/).filter(Boolean);
-  const lastLine = lines[lines.length - 1] || value;
-
-  const parsed = JSON.parse(lastLine);
-
-  if (parsed?.error) {
-    throw new Error(parsed.error);
-  }
-
-  return parsed;
-};
-
-const runPythonModule = (moduleKey, payload, timeoutMs = 25000) =>
-  new Promise((resolve, reject) => {
-    const processHandle = spawn(PYTHON_EXECUTABLE, [PYTHON_ENTRY_FILE, "scan", moduleKey], {
-      cwd: AI_SERVICE_DIR,
-      stdio: ["pipe", "pipe", "pipe"]
-    });
-
-    let stdout = "";
-    let stderr = "";
-    let settled = false;
-
-    const finishError = (error) => {
-      if (settled) {
-        return;
-      }
-
-      settled = true;
-      clearTimeout(timer);
-      reject(error instanceof Error ? error : new Error(String(error)));
-    };
-
-    const finishSuccess = (value) => {
-      if (settled) {
-        return;
-      }
-
-      settled = true;
-      clearTimeout(timer);
-      resolve(value);
-    };
-
-    const timer = setTimeout(() => {
-      processHandle.kill("SIGTERM");
-      finishError(new Error(`Scan module timeout for '${moduleKey}'`));
-    }, timeoutMs);
-
-    processHandle.stdout.on("data", (chunk) => {
-      stdout += chunk.toString();
-    });
-
-    processHandle.stderr.on("data", (chunk) => {
-      stderr += chunk.toString();
-    });
-
-    processHandle.on("error", (error) => {
-      finishError(error);
-    });
-
-    processHandle.stdin.on("error", (error) => {
-      if (error?.code === "EOF") {
-        finishError(new Error(`Python stdin closed before payload write for module '${moduleKey}'`));
-        return;
-      }
-
-      finishError(error);
-    });
-
-    processHandle.on("close", (code) => {
-      if (code !== 0) {
-        const detail = stderr.trim() || stdout.trim() || `Python exit code ${code}`;
-        finishError(new Error(detail));
-        return;
-      }
-
-      try {
-        const parsed = parsePythonOutput(stdout);
-        finishSuccess(parsed);
-      } catch (error) {
-        finishError(error);
-      }
-    });
-
-    try {
-      processHandle.stdin.end(JSON.stringify(payload));
-    } catch (error) {
-      finishError(error);
-    }
+const runPythonModule = async (moduleKey, payload, timeoutMs = 25000) => {
+  const res = await fetch(`${CROP_SCAN_API_URL}/scan/${moduleKey}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+    signal: AbortSignal.timeout(timeoutMs)
   });
+
+  if (!res.ok) {
+    throw new Error(`Scan service returned ${res.status} for module '${moduleKey}'`);
+  }
+
+  const data = await res.json();
+
+  if (data?.error) {
+    throw new Error(data.error);
+  }
+
+  return data;
+};
 
 const fallbackModuleResult = (moduleKey, payload = {}) => {
   const selectedCrop = String(payload.cropType || "Tomato");

@@ -1196,6 +1196,28 @@ const FarmerDashboard = () => {
     return () => clearInterval(refreshTimer);
   }, [loadDashboardData]);
 
+  // Socket-driven real-time refresh — invalidates cache and triggers background reload
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    let socket;
+    import("../../realtime/dashboardSocket").then(({ connectBuyerDashboardSocket }) => {
+      socket = connectBuyerDashboardSocket(token);
+
+      const invalidateAndRefresh = () => {
+        runtimeCache.clear();
+        loadDashboardData({ background: true, force: true });
+      };
+
+      socket.on("crop_price_update", invalidateAndRefresh);
+      socket.on("inventory_update", invalidateAndRefresh);
+      socket.on("new_crop_listing", invalidateAndRefresh);
+    });
+
+    return () => { socket?.disconnect(); };
+  }, [loadDashboardData]);
+
   const farmerFirstName = useMemo(() => {
     const name = user?.name || dashboard.farmProfile.farmerName || "Farmer";
     return name.split(" ")[0];

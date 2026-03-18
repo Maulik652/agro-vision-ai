@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { BookOpen, Plus, BarChart2, History, Radio, X } from "lucide-react";
+import { BookOpen, Plus, BarChart2, History, Radio, X, Sparkles, TrendingUp } from "lucide-react";
 import AdvisoryOverview from "../../components/advisory/AdvisoryOverview";
 import CreateAdvisoryForm from "../../components/advisory/CreateAdvisoryForm";
 import AdvisoryFeed from "../../components/advisory/AdvisoryFeed";
@@ -15,130 +15,145 @@ const TABS = [
   { key: "feed",      label: "Feed",      icon: BookOpen },
   { key: "analytics", label: "Analytics", icon: BarChart2 },
   { key: "history",   label: "History",   icon: History },
-  { key: "broadcast", label: "Broadcast", icon: Radio }
+  { key: "broadcast", label: "Broadcast", icon: Radio },
 ];
 
 export default function Advisory() {
-  const [tab, setTab]             = useState("feed");
+  const [tab, setTab]               = useState("feed");
   const [showCreate, setShowCreate] = useState(false);
-  const [editData, setEditData]   = useState(null);
-  const [viewId, setViewId]       = useState(null);
+  const [editData, setEditData]     = useState(null);
+  const [viewId, setViewId]         = useState(null);
   const [aiFormData, setAiFormData] = useState(null);
+  const [sidebarTab, setSidebarTab] = useState("ai"); // "ai" | "market"
 
-  const handleEdit = (advisory) => {
-    setEditData(advisory);
-    setShowCreate(true);
-  };
-
-  const handleView = (advisory) => setViewId(advisory._id);
-
-  const handleAIFill = (currentForm, applyFn) => {
-    setAiFormData({ currentForm, applyFn });
-  };
-
-  const handleAIApply = (result) => {
-    aiFormData?.applyFn?.(result);
-    setAiFormData(null);
-  };
-
-  const handleCloseForm = () => {
-    setShowCreate(false);
-    setEditData(null);
-  };
+  const handleEdit  = (a) => { setEditData(a); setShowCreate(true); };
+  const handleView  = (a) => setViewId(a._id);
+  const handleAIFill = (currentForm, applyFn) => setAiFormData({ currentForm, applyFn });
+  const handleAIApply = (result) => { aiFormData?.applyFn?.(result); setAiFormData(null); };
+  const handleCloseForm = () => { setShowCreate(false); setEditData(null); };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#f6f8f4] via-[#eefbf1] to-[#f3f4ef]">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+    <div className="min-h-screen bg-[#f7f8f6]">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 xl:px-8 py-6 space-y-5">
 
-        {/* Page header */}
-        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
-          className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-100 border border-emerald-200 flex items-center justify-center">
-                <BookOpen size={20} className="text-emerald-700" />
-              </div>
-              Advisory Management
-            </h1>
-            <p className="text-slate-500 text-sm mt-1">Publish intelligence, broadcast alerts, and guide farmers with AI</p>
+        {/* ── Page header ── */}
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-9 h-9 rounded-xl bg-emerald-600 flex items-center justify-center shrink-0">
+              <BookOpen size={17} className="text-white" />
+            </div>
+            <div className="min-w-0">
+              <h1 className="text-lg font-bold text-slate-900 leading-tight">Advisory Management</h1>
+              <p className="text-xs text-slate-500 hidden sm:block">Publish intelligence, broadcast alerts, and guide farmers with AI</p>
+            </div>
           </div>
-          <button onClick={() => { setEditData(null); setShowCreate(true); }}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium transition shadow-sm">
-            <Plus size={15} /> New Advisory
+          <button
+            onClick={() => { setEditData(null); setShowCreate(true); }}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium transition-colors shrink-0 shadow-sm"
+          >
+            <Plus size={15} />
+            <span className="hidden sm:inline">New Advisory</span>
+            <span className="sm:hidden">New</span>
           </button>
-        </motion.div>
+        </div>
 
-        {/* Overview cards */}
+        {/* ── Overview stats ── */}
         <AdvisoryOverview />
 
-        {/* Create / Edit form */}
+        {/* ── Create / Edit form ── */}
         <AnimatePresence>
           {showCreate && (
-            <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
-              <CreateAdvisoryForm
-                editData={editData}
-                onClose={handleCloseForm}
-                onAIFill={handleAIFill}
-              />
+            <motion.div
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.18 }}
+            >
+              <CreateAdvisoryForm editData={editData} onClose={handleCloseForm} onAIFill={handleAIFill} />
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Main layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* ── Main two-column layout ── */}
+        <div className="grid grid-cols-1 xl:grid-cols-[1fr_340px] gap-5 items-start">
 
-          {/* Left — main content */}
-          <div className="lg:col-span-2 space-y-5">
+          {/* Left — tabbed content */}
+          <div className="min-w-0 space-y-4">
             {/* Tab bar */}
-            <div className="flex gap-1 bg-white border border-slate-200 rounded-xl p-1 shadow-sm w-fit">
+            <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-1 shadow-sm w-fit">
               {TABS.map(({ key, label, icon: Icon }) => (
-                <button key={key} onClick={() => setTab(key)}
-                  className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium transition ${
-                    tab === key ? "bg-emerald-600 text-white" : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
-                  }`}>
-                  <Icon size={13} /> {label}
+                <button
+                  key={key}
+                  onClick={() => setTab(key)}
+                  className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${
+                    tab === key
+                      ? "bg-emerald-600 text-white shadow-sm"
+                      : "text-slate-500 hover:text-slate-800 hover:bg-slate-50"
+                  }`}
+                >
+                  <Icon size={13} />
+                  {label}
                 </button>
               ))}
             </div>
 
+            {/* Tab panels */}
             <AnimatePresence mode="wait">
-              {tab === "feed" && (
-                <motion.div key="feed" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                  <AdvisoryFeed onEdit={handleEdit} onView={handleView} />
-                </motion.div>
-              )}
-              {tab === "analytics" && (
-                <motion.div key="analytics" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                  <AdvisoryAnalytics />
-                </motion.div>
-              )}
-              {tab === "history" && (
-                <motion.div key="history" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                  <AdvisoryHistory onView={handleView} />
-                </motion.div>
-              )}
-              {tab === "broadcast" && (
-                <motion.div key="broadcast" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                  <BroadcastPanel />
-                </motion.div>
-              )}
+              <motion.div
+                key={tab}
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
+              >
+                {tab === "feed"      && <AdvisoryFeed onEdit={handleEdit} onView={handleView} />}
+                {tab === "analytics" && <AdvisoryAnalytics />}
+                {tab === "history"   && <AdvisoryHistory onView={handleView} />}
+                {tab === "broadcast" && <BroadcastPanel />}
+              </motion.div>
             </AnimatePresence>
           </div>
 
           {/* Right sidebar */}
-          <div className="space-y-5">
-            <AIAssistantPanel onApply={handleAIApply} />
-            <MarketInsights />
+          <div className="space-y-4 min-w-0">
+            {/* Sidebar tab switcher */}
+            <div className="flex gap-1 bg-white border border-slate-200 rounded-xl p-1 shadow-sm">
+              <button
+                onClick={() => setSidebarTab("ai")}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-colors ${
+                  sidebarTab === "ai" ? "bg-violet-600 text-white" : "text-slate-500 hover:bg-slate-50"
+                }`}
+              >
+                <Sparkles size={12} /> AI Assistant
+              </button>
+              <button
+                onClick={() => setSidebarTab("market")}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-colors ${
+                  sidebarTab === "market" ? "bg-blue-600 text-white" : "text-slate-500 hover:bg-slate-50"
+                }`}
+              >
+                <TrendingUp size={12} /> Market
+              </button>
+            </div>
+
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={sidebarTab}
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
+              >
+                {sidebarTab === "ai"     && <AIAssistantPanel onApply={handleAIApply} />}
+                {sidebarTab === "market" && <MarketInsights />}
+              </motion.div>
+            </AnimatePresence>
           </div>
         </div>
       </div>
 
       {/* Advisory detail modal */}
-      <AdvisoryDetail
-        advisoryId={viewId}
-        open={!!viewId}
-        onClose={() => setViewId(null)}
-      />
+      <AdvisoryDetail advisoryId={viewId} open={!!viewId} onClose={() => setViewId(null)} />
     </div>
   );
 }

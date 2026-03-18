@@ -258,7 +258,11 @@ export const getAllOrders = async (req, res) => {
 export const updateOrderStatus = async (req, res) => {
   try {
     const { status } = req.body;
-    const order = await Order.findByIdAndUpdate(req.params.id, { orderStatus: status }, { new: true })
+    const allowed = ["pending", "confirmed", "shipped", "delivered", "completed", "cancelled"];
+    if (!allowed.includes(status)) {
+      return res.status(400).json({ message: "Invalid status value." });
+    }
+    const order = await Order.findByIdAndUpdate(req.params.id, { orderStatus: status, status }, { new: true })
       .populate("buyer", "_id name")
       .populate("farmer", "_id name");
     if (!order) return res.status(404).json({ message: "Order not found" });

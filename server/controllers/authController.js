@@ -1,6 +1,7 @@
 import User from "../models/User.js";
 import bcrypt from "bcryptjs";
 import generateToken from "../utils/generateToken.js";
+import { emitAdminActivity } from "../realtime/adminNamespace.js";
 
 const AUTH_COOKIE_NAME = process.env.AUTH_COOKIE_NAME || "av_access_token";
 const COOKIE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
@@ -113,6 +114,9 @@ export const registerUser = async (req, res) => {
 
     const token = generateToken(user._id.toString(), user.role);
     res.cookie(AUTH_COOKIE_NAME, token, authCookieOptions);
+
+    // Notify admin live activity feed
+    emitAdminActivity({ type: "user", message: `${user.name} joined as ${user.role}`, time: new Date().toISOString() });
 
     return res.status(201).json({
       message: "Registration successful",

@@ -38,7 +38,7 @@ export default function ConversationList({
       </div>
 
       {/* List */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
         {isLoading ? (
           <div className="space-y-1 p-2">
             {Array.from({ length: 5 }).map((_, i) => (

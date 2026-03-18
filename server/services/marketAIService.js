@@ -1,13 +1,4 @@
-import { spawn } from "child_process";
-import path from "path";
-import { fileURLToPath } from "url";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-const PYTHON_EXECUTABLE = process.env.PYTHON_EXECUTABLE || "python";
-const AI_SERVICE_DIR = path.resolve(__dirname, "..", "..", "ai_service");
-const PYTHON_MARKETPLACE_ENTRY = path.join(AI_SERVICE_DIR, "marketplace_ai.py");
+const MARKETPLACE_AI_URL = (process.env.MARKETPLACE_AI_URL || "http://localhost:8101").replace(/\/$/, "");
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const toNumber = (value, fallback = 0) => {
@@ -91,102 +82,26 @@ const parseDemandScore = (demand) => {
   return 56;
 };
 
-const parsePythonOutput = (rawStdout) => {
-  const value = String(rawStdout || "").trim();
-
-  if (!value) {
-    throw new Error("Marketplace AI returned empty response");
-  }
-
-  const lines = value.split(/\r?\n/).filter(Boolean);
-  const lastLine = lines[lines.length - 1] || value;
-  const parsed = JSON.parse(lastLine);
-
-  if (parsed?.error) {
-    throw new Error(parsed.error);
-  }
-
-  return parsed;
-};
-
-const runPythonAction = (action, payload, timeoutMs = 2600) =>
-  new Promise((resolve, reject) => {
-    const processHandle = spawn(PYTHON_EXECUTABLE, [PYTHON_MARKETPLACE_ENTRY, action], {
-      cwd: AI_SERVICE_DIR,
-      stdio: ["pipe", "pipe", "pipe"]
-    });
-
-    let stdout = "";
-    let stderr = "";
-    let settled = false;
-
-    const finishError = (error) => {
-      if (settled) {
-        return;
-      }
-
-      settled = true;
-      clearTimeout(timer);
-      reject(error instanceof Error ? error : new Error(String(error)));
-    };
-
-    const finishSuccess = (value) => {
-      if (settled) {
-        return;
-      }
-
-      settled = true;
-      clearTimeout(timer);
-      resolve(value);
-    };
-
-    const timer = setTimeout(() => {
-      processHandle.kill("SIGTERM");
-      finishError(new Error(`Marketplace AI timeout for action '${action}'`));
-    }, timeoutMs);
-
-    processHandle.stdout.on("data", (chunk) => {
-      stdout += chunk.toString();
-    });
-
-    processHandle.stderr.on("data", (chunk) => {
-      stderr += chunk.toString();
-    });
-
-    processHandle.on("error", (error) => {
-      finishError(error);
-    });
-
-    processHandle.stdin.on("error", (error) => {
-      if (error?.code === "EOF") {
-        finishError(new Error(`Marketplace AI stdin closed before payload write for action '${action}'`));
-        return;
-      }
-
-      finishError(error);
-    });
-
-    processHandle.on("close", (code) => {
-      if (code !== 0) {
-        const detail = stderr.trim() || stdout.trim() || `Python exit code ${code}`;
-        finishError(new Error(detail));
-        return;
-      }
-
-      try {
-        const parsed = parsePythonOutput(stdout);
-        finishSuccess(parsed);
-      } catch (error) {
-        finishError(error);
-      }
-    });
-
-    try {
-      processHandle.stdin.end(JSON.stringify(payload));
-    } catch (error) {
-      finishError(error);
-    }
+const runPythonAction = async (action, payload, timeoutMs = 5000) => {
+  const res = await fetch(`${MARKETPLACE_AI_URL}/${action}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+    signal: AbortSignal.timeout(timeoutMs)
   });
+
+  if (!res.ok) {
+    throw new Error(`Marketplace AI returned ${res.status} for action '${action}'`);
+  }
+
+  const data = await res.json();
+
+  if (data?.error) {
+    throw new Error(data.error);
+  }
+
+  return data;
+};
 
 const fallbackPriceSuggestion = (payload = {}) => {
   const crop = normalizeCrop(payload.crop || payload.cropName);

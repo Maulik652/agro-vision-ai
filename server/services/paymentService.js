@@ -34,6 +34,23 @@ const getStripe = () => {
   return stripe;
 };
 
+/* ── Wallet ───────────────────────────────────────────────────── */
+export const verifyWallet = async (buyerId, parentOrderId) => {
+  const walletPaymentId = `WALLET-${Date.now()}`;
+
+  await Payment.create({
+    parentOrderId, buyer: buyerId,
+    paymentGateway: "wallet",
+    gatewayOrderId: walletPaymentId,
+    paymentId:      walletPaymentId,
+    amount: 0, currency: "INR",
+    status: "paid",
+  });
+
+  await markOrdersPaid(parentOrderId, walletPaymentId);
+  return { verified: true, paymentId: walletPaymentId };
+};
+
 /* ── Razorpay ────────────────────────────────────────────────── */
 export const createRazorpayOrder = async (buyerId, parentOrderId, amountInRupees) => {
   const rz = getRazorpay();

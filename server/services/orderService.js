@@ -9,7 +9,7 @@ import Address from "../models/Address.js";
 import CropListing from "../models/CropListing.js";
 import { deleteCache } from "../config/redis.js";
 import { emitAnalyticsUpdate } from "../realtime/analyticsNamespace.js";
-import { emitStockUpdate, emitInventoryUpdate } from "../realtime/socketServer.js";
+import { emitStockUpdate, emitInventoryUpdate, getSocketServer, emitOrderUpdate } from "../realtime/socketServer.js";
 
 const PLATFORM_FEE_RATE = 0.015; // 1.5%
 const TAX_RATE          = 0.05;  // 5%
@@ -185,24 +185,24 @@ export const createOrdersFromCart = async (buyerId, { addressId, deliveryType, p
   }
 
   for (const [cropId, deductQty] of Object.entries(stockDeductions)) {
-    // Atomically decrement; clamp to 0 using $max
+    // Step 1: decrement quantity (clamp at 0 via $max in a second pass)
+    await CropListing.findByIdAndUpdate(cropId, { $inc: { quantity: -deductQty } });
+
+    // Step 2: clamp to 0 and mark sold if quantity went negative
     const updated = await CropListing.findByIdAndUpdate(
       cropId,
-      [
-        {
-          $set: {
-            quantity: { $max: [{ $subtract: ["$quantity", deductQty] }, 0] },
-          },
-        },
-        {
-          $set: {
-            status:   { $cond: [{ $lte: ["$quantity", 0] }, "sold", "$status"] },
-            isActive: { $cond: [{ $lte: ["$quantity", 0] }, false, "$isActive"] },
-          },
-        },
-      ],
+      { $max: { quantity: 0 } },
       { new: true }
     ).lean();
+
+    // Step 3: if now out of stock, flip status and isActive
+    if (updated && updated.quantity <= 0) {
+      await CropListing.findByIdAndUpdate(cropId, {
+        $set: { status: "sold", isActive: false },
+      });
+      updated.status   = "sold";
+      updated.isActive = false;
+    }
 
     if (updated) {
       const outOfStock = updated.quantity <= 0;
@@ -243,6 +243,8 @@ export const markOrdersPaid = async (parentOrderId, paymentId) => {
   // Invalidate analytics cache + emit real-time update
   await Promise.all(buyerIds.map((id) => deleteCache(`analytics_buyer_${id}_30d_all`)));
   buyerIds.forEach((id) => emitAnalyticsUpdate(id, "order", { event: "payment_confirmed", parentOrderId }));
+  // Emit order_update to buyer dashboard so recent orders refresh
+  buyerIds.forEach((id) => emitOrderUpdate({ buyerId: id, order: { parentOrderId, orderStatus: "paid", paymentId } }));
 
   // Notify each farmer that payment is confirmed
   const io = getSocketServer();

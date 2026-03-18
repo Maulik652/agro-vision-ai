@@ -1,3 +1,7 @@
+# DEPRECATED — Not called by any backend service.
+# All prediction requests now go through analytics_prediction_service.py (port 8003).
+# This file is kept for reference only and will be removed in a future cleanup.
+
 import json
 import sys
 from typing import Any, Dict

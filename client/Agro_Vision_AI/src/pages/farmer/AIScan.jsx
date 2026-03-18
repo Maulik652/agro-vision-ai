@@ -236,6 +236,7 @@ const AIScan = () => {
   const [imageFile,    setImageFile]    = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [cropType,     setCropType]     = useState("Tomato");
+  const [scanType,     setScanType]     = useState("auto"); // "crop" | "soil" | "auto"
   const [dragOver,     setDragOver]     = useState(false);
 
   /* Camera state */
@@ -301,15 +302,38 @@ const AIScan = () => {
   }, [cameraStream]);
 
   /* ── File handler ────────────────────────────────────────────────────────── */
-  const handleFile = useCallback((file) => {
-    if (!file || !file.type.startsWith("image/")) {
-      toast.error("Please select a valid image file (JPG / PNG).");
+  const handleFile = useCallback(async (file) => {
+    if (!file) return;
+
+    // 1. Type check — only JPG/JPEG/PNG
+    const mime = (file.type || "").toLowerCase();
+    const ext  = file.name ? file.name.slice(file.name.lastIndexOf(".")).toLowerCase() : "";
+    const allowedMime = ["image/jpeg", "image/jpg", "image/png"];
+    const allowedExt  = [".jpg", ".jpeg", ".png"];
+    if (!allowedMime.includes(mime) || !allowedExt.includes(ext)) {
+      toast.error("Only image files are allowed (JPG, JPEG, PNG).");
       return;
     }
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error("Image size must be under 10 MB.");
+
+    // 2. Size check — max 5 MB
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("File size must be less than 5MB.");
       return;
     }
+
+    // 3. Dimension check — min 100×100 px
+    const dimOk = await new Promise((resolve) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload  = () => { URL.revokeObjectURL(url); resolve(img.width >= 100 && img.height >= 100); };
+      img.onerror = () => { URL.revokeObjectURL(url); resolve(false); };
+      img.src = url;
+    });
+    if (!dimOk) {
+      toast.error("Image resolution is too low. Please upload a clearer photo.");
+      return;
+    }
+
     setImageFile(file);
     setImagePreview(URL.createObjectURL(file));
     setScanState("idle");
@@ -399,8 +423,13 @@ const AIScan = () => {
 
   /* ── Main scan handler ───────────────────────────────────────────────────── */
   const handleScan = async () => {
-    if (!imageFile) { toast.error("Please upload or capture a crop image first."); return; }
+    // 1. Empty input check
+    if (!imageFile) {
+      toast.error("Please upload an image.");
+      return;
+    }
 
+    // 2. Run all frontend validations
     setResult(null);
     setScanState("checking");
     setScanProgress(5);
@@ -415,11 +444,26 @@ const AIScan = () => {
       const formData = new FormData();
       formData.append("image",    imageFile);
       formData.append("cropType", cropType);
+      formData.append("scanType", scanType); // "crop" | "soil" | "auto"
+
       const res = await api.post("/ai/crop-scan", formData, {
         headers: { "Content-Type": "multipart/form-data" },
         timeout: 30_000,
       });
-      const d = res.data || {};
+
+      // Structured response: { success, message, data }
+      const payload = res.data || {};
+      const d = payload.data || payload; // support both wrapped and legacy
+
+      if (payload.success === false) {
+        const msg = payload.message || "Scan failed. Please try again.";
+        toast.error(msg);
+        setQualityWarning(msg);
+        setScanProgress(0);
+        setScanState("idle");
+        return;
+      }
+
       setResult({
         disease:     d.disease     || FALLBACK_RESULT.disease,
         confidence:  Number(d.confidence  ?? FALLBACK_RESULT.confidence),
@@ -431,15 +475,21 @@ const AIScan = () => {
               confidence: Number(p.confidence ?? 0),
             }))
           : FALLBACK_RESULT.predictions,
-        treatment:  Array.isArray(d.treatment)  && d.treatment.length
-          ? d.treatment  : FALLBACK_RESULT.treatment,
-        prevention: Array.isArray(d.prevention) && d.prevention.length
-          ? d.prevention : FALLBACK_RESULT.prevention,
+        treatment:  Array.isArray(d.treatment)  && d.treatment.length  ? d.treatment  : FALLBACK_RESULT.treatment,
+        prevention: Array.isArray(d.prevention) && d.prevention.length ? d.prevention : FALLBACK_RESULT.prevention,
+        detectedScanType: d.detectedScanType || scanType, // for auto-detect feedback
       });
+
+      setScanProgress(100);
+      setScanState("done");
+      toast.success("AI scan complete! Results ready below.");
+
     } catch (err) {
-      // Handle non-crop image rejection (HTTP 422)
-      const status = err?.response?.status;
-      const errCode = err?.response?.data?.error;
+      const status  = err?.response?.status;
+      const payload = err?.response?.data || {};
+      const errCode = payload.error || payload.code;
+      const message = payload.message || "Scan failed. Please try again.";
+
       if (status === 422 || errCode === "NOT_A_CROP_IMAGE") {
         setNotCropError(true);
         setQualityWarning("This doesn't look like a crop image. Please upload a clear photo of a plant leaf or crop field.");
@@ -448,12 +498,45 @@ const AIScan = () => {
         toast.error("Not a crop image. Please upload a plant or leaf photo.");
         return;
       }
-      setResult({ ...FALLBACK_RESULT });
-    }
 
-    setScanProgress(100);
-    setScanState("done");
-    toast.success("AI scan complete! Results ready below.");
+      if (status === 400) {
+        setQualityWarning(message);
+        setScanProgress(0);
+        setScanState("idle");
+        toast.error(message);
+        return;
+      }
+
+      if (errCode === "LOW_CONFIDENCE") {
+        setQualityWarning("Unclear image. Please upload a better quality image.");
+        setScanProgress(0);
+        setScanState("idle");
+        toast.error("Unclear image. Please upload a better quality image.");
+        return;
+      }
+
+      if (errCode === "BLURRY_IMAGE") {
+        setQualityWarning("Image is too blurry. Upload a clear image.");
+        setScanProgress(0);
+        setScanState("idle");
+        toast.error("Image is too blurry. Upload a clear image.");
+        return;
+      }
+
+      if (errCode === "INVALID_SCAN_TYPE") {
+        setQualityWarning(message);
+        setScanProgress(0);
+        setScanState("idle");
+        toast.error(message);
+        return;
+      }
+
+      // Fallback — show backend message, don't crash UI
+      toast.error(message);
+      setResult({ ...FALLBACK_RESULT });
+      setScanProgress(100);
+      setScanState("done");
+    }
   };
 
   const handleReset = () => {
@@ -464,6 +547,7 @@ const AIScan = () => {
     setQualityWarning(null);
     setNotCropError(false);
     setScanProgress(0);
+    setScanType("auto");
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -712,6 +796,42 @@ const AIScan = () => {
               >
                 {CROP_TYPES.map((c) => <option key={c}>{c}</option>)}
               </select>
+
+              {/* Scan Type Selector */}
+              <div className="mt-4">
+                <label className="mb-1.5 block text-xs font-semibold text-slate-600">
+                  Scan Type
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { value: "auto", label: "Auto Detect", icon: Zap,      desc: "AI decides" },
+                    { value: "crop", label: "Crop / Leaf", icon: Leaf,      desc: "Plant image" },
+                    { value: "soil", label: "Soil",        icon: FlaskConical, desc: "Soil texture" },
+                  ].map(({ value, label, icon: Icon, desc }) => (
+                    <button
+                      key={value}
+                      type="button"
+                      disabled={isBusy}
+                      onClick={() => setScanType(value)}
+                      className={`flex flex-col items-center gap-1 rounded-xl border py-2.5 px-2 text-center text-[11px] font-semibold transition-all disabled:opacity-50 ${
+                        scanType === value
+                          ? "border-green-600 bg-green-50 text-green-800 shadow-sm"
+                          : "border-slate-200 bg-white text-slate-500 hover:border-green-300"
+                      }`}
+                    >
+                      <Icon size={14} className={scanType === value ? "text-green-700" : "text-slate-400"} />
+                      {label}
+                      <span className="text-[9px] font-normal opacity-70">{desc}</span>
+                    </button>
+                  ))}
+                </div>
+                {scanType === "auto" && (
+                  <p className="mt-1.5 text-[10px] text-slate-400 flex items-center gap-1">
+                    <Zap size={9} className="text-amber-500" />
+                    AI will auto-detect if image is crop or soil
+                  </p>
+                )}
+              </div>
 
               {/* Quality / not-crop warning */}
               <AnimatePresence>

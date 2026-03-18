@@ -36,4 +36,5 @@ export const verifyPaymentSchema = z.object({
   razorpay_payment_id:    z.string().optional(),
   razorpay_signature:     z.string().optional(),
   stripe_payment_intent:  z.string().optional(),
+  wallet:                 z.boolean().optional(),
 });

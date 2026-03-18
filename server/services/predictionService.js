@@ -1,13 +1,4 @@
-import { spawn } from "child_process";
-import path from "path";
-import { fileURLToPath } from "url";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-const PYTHON_EXECUTABLE = process.env.PYTHON_EXECUTABLE || "python";
-const AI_SERVICE_DIR = path.resolve(__dirname, "..", "..", "ai_service");
-const PYTHON_ENTRY_FILE = path.join(AI_SERVICE_DIR, "main_cli.py");
+const AI_ANALYTICS_URL = (process.env.AI_ANALYTICS_URL || process.env.AI_SERVICE_URL || "http://localhost:8003").replace(/\/$/, "");
 
 const MODULE_KEYS = [
   "crop-health-risk",
@@ -412,103 +403,26 @@ const buildFallbackModuleResult = (moduleKey, input) => {
   });
 };
 
-const parsePythonOutput = (rawStdout) => {
-  const value = String(rawStdout || "").trim();
-
-  if (!value) {
-    throw new Error("Python module returned empty response");
-  }
-
-  const lines = value.split(/\r?\n/).filter(Boolean);
-  const lastLine = lines[lines.length - 1] || value;
-
-  const parsed = JSON.parse(lastLine);
-
-  if (parsed?.error) {
-    throw new Error(parsed.error);
-  }
-
-  return parsed;
-};
-
-const runPythonModule = (moduleKey, payload, timeoutMs = 1900) =>
-  new Promise((resolve, reject) => {
-    const processHandle = spawn(PYTHON_EXECUTABLE, [PYTHON_ENTRY_FILE, "predict", moduleKey], {
-      cwd: AI_SERVICE_DIR,
-      stdio: ["pipe", "pipe", "pipe"]
-    });
-
-    let stdout = "";
-    let stderr = "";
-    let settled = false;
-
-    const finishError = (error) => {
-      if (settled) {
-        return;
-      }
-
-      settled = true;
-      clearTimeout(timer);
-      reject(error instanceof Error ? error : new Error(String(error)));
-    };
-
-    const finishSuccess = (value) => {
-      if (settled) {
-        return;
-      }
-
-      settled = true;
-      clearTimeout(timer);
-      resolve(value);
-    };
-
-    const timer = setTimeout(() => {
-      processHandle.kill("SIGTERM");
-      finishError(new Error(`Prediction timeout for module '${moduleKey}'`));
-    }, timeoutMs);
-
-    processHandle.stdout.on("data", (chunk) => {
-      stdout += chunk.toString();
-    });
-
-    processHandle.stderr.on("data", (chunk) => {
-      stderr += chunk.toString();
-    });
-
-    processHandle.on("error", (error) => {
-      finishError(error);
-    });
-
-    processHandle.stdin.on("error", (error) => {
-      if (error?.code === "EOF") {
-        finishError(new Error(`Python stdin closed before payload write for module '${moduleKey}'`));
-        return;
-      }
-
-      finishError(error);
-    });
-
-    processHandle.on("close", (code) => {
-      if (code !== 0) {
-        const detail = stderr.trim() || stdout.trim() || `Python exit code ${code}`;
-        finishError(new Error(detail));
-        return;
-      }
-
-      try {
-        const parsed = parsePythonOutput(stdout);
-        finishSuccess(parsed);
-      } catch (error) {
-        finishError(error);
-      }
-    });
-
-    try {
-      processHandle.stdin.end(JSON.stringify(payload));
-    } catch (error) {
-      finishError(error);
-    }
+const runPythonModule = async (moduleKey, payload, timeoutMs = 5000) => {
+  const res = await fetch(`${AI_ANALYTICS_URL}/ai/single-prediction`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ module: moduleKey, ...payload }),
+    signal: AbortSignal.timeout(timeoutMs)
   });
+
+  if (!res.ok) {
+    throw new Error(`Prediction service returned ${res.status} for module '${moduleKey}'`);
+  }
+
+  const data = await res.json();
+
+  if (data?.error) {
+    throw new Error(data.error);
+  }
+
+  return data;
+};
 
 export const getPredictionModuleKeys = () => [...MODULE_KEYS];
 

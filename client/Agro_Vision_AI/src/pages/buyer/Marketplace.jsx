@@ -11,6 +11,7 @@ import toast from "react-hot-toast";
 import { searchCrops, getHighDemandCrops, addToCart } from "../../api/marketplaceApi";
 import useCartStore from "../../store/cartStore.js";
 import useStockSocket from "../../hooks/useStockSocket.js";
+import useOfferSocket from "../../hooks/useOfferSocket.js";
 
 const SORT_OPTIONS = [
   { value: "latest",        label: "Latest" },
@@ -377,6 +378,17 @@ export default function Marketplace() {
           : c
       )
     );
+  });
+
+  // Real-time price updates when farmer accepts a buyer offer
+  useOfferSocket({
+    crop_price_update: ({ cropId, price }) => {
+      setCrops((prev) =>
+        prev.map((c) =>
+          (c.id ?? c._id) === cropId ? { ...c, price } : c
+        )
+      );
+    },
   });
 
   const handleFilterChange = (key, value) => setFilters((prev) => ({ ...prev, [key]: value }));

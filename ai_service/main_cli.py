@@ -1,3 +1,8 @@
+# DEPRECATED — Not called by any backend service.
+# All prediction requests now go through analytics_prediction_service.py (port 8003).
+# All scan requests now go through crop_scan_api.py (port 8001).
+# This file is kept for reference only and will be removed in a future cleanup.
+
 import json
 import sys
 from typing import Any, Callable, Dict

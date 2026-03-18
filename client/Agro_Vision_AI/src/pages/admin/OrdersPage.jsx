@@ -9,6 +9,7 @@ const STATUS_BADGE = {
   confirmed: "bg-blue-100 text-blue-700",
   shipped: "bg-purple-100 text-purple-700",
   delivered: "bg-green-100 text-green-700",
+  completed: "bg-emerald-100 text-emerald-800",
   cancelled: "bg-red-100 text-red-700",
 };
 
@@ -42,7 +43,7 @@ export default function OrdersPage() {
       </div>
 
       <div className="flex gap-2 flex-wrap">
-        {["", "pending", "confirmed", "shipped", "delivered", "cancelled"].map((s) => (
+        {["", "pending", "confirmed", "shipped", "delivered", "completed", "cancelled"].map((s) => (
           <button
             key={s}
             onClick={() => { setStatus(s); setPage(1); }}
@@ -96,6 +97,7 @@ export default function OrdersPage() {
                           <option value="confirmed">Confirmed</option>
                           <option value="shipped">Shipped</option>
                           <option value="delivered">Delivered</option>
+                          <option value="completed">Completed</option>
                           <option value="cancelled">Cancelled</option>
                         </select>
                       </td>

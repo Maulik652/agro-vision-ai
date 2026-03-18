@@ -1,4 +1,3 @@
-import math
 from datetime import date
 from typing import Dict
 
@@ -16,7 +15,6 @@ from .common import (
     parse_date,
     safe_float
 )
-
 
 def predict(payload: Dict) -> Dict:
     profile = crop_profile(payload.get("cropType", ""))
@@ -43,10 +41,10 @@ def predict(payload: Dict) -> Dict:
     harvest_month = harvest_date.month if isinstance(harvest_date, date) else date.today().month
 
     seasonal_factor = month_seasonality(harvest_month)
-    volatility_seed = (scores["temperature"] * 1.7) + (scores["humidity"] * 1.1) + (scores["agro_score"] * 0.9) + (harvest_month * 5.0)
-    price_variation = clamp(math.sin(volatility_seed / 17.0) * 0.08, -0.08, 0.08)
 
-    price_per_quintal = profile["market_base_price"] * seasonal_factor * (1.0 + price_variation)
+    # Deterministic demand-driven price adjustment (no random variation)
+    demand_factor = clamp(0.92 + (scores["rain_score"] / 400.0) + (scores["temp_score"] / 600.0), 0.85, 1.18)
+    price_per_quintal = profile["market_base_price"] * seasonal_factor * demand_factor
     price_floor = profile["market_base_price"] * 0.60
     price_ceiling = profile["market_base_price"] * 1.55
     price_per_quintal = clamp(price_per_quintal, price_floor, price_ceiling)
@@ -73,9 +71,9 @@ def predict(payload: Dict) -> Dict:
 
     confidence = confidence_from_scores(
         scores["agro_score"],
-        100.0 - (abs(price_variation) * 625.0),
         soil_component * 100.0,
-        irrigation_component * 100.0
+        irrigation_component * 100.0,
+        (seasonal_factor - 0.9) * 500.0  # seasonal certainty signal
     )
 
     monthly_projection = [
@@ -96,7 +94,7 @@ def predict(payload: Dict) -> Dict:
 
     explanation = (
         f"Projected revenue near Rs {int(revenue):,} against cost Rs {int(cost):,} gives estimated profit Rs {int(profit):,}. "
-        f"Price volatility factor applied: {round(price_variation * 100.0, 1)}%."
+        f"Seasonal factor applied: x{round(seasonal_factor, 3)}."
     )
 
     return module_envelope(

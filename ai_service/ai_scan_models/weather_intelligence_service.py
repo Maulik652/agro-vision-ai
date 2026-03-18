@@ -130,18 +130,63 @@ def get_weather_context(payload: Dict, crop_key: str = "") -> Dict:
     if coordinates is not None:
         api_values = _fetch_open_meteo(coordinates[0], coordinates[1])
 
-    temperature = safe_float(
-        (api_values or {}).get("temperature") if api_values else payload.get("temperature"),
-        target["temp"],
+    # Use payload-provided values if present, otherwise use API values.
+    # If neither is available, raise an error — do NOT silently fall back to ideal values.
+    payload_temp = payload.get("temperature")
+    payload_humidity = payload.get("humidity")
+    payload_rainfall = payload.get("rainfall")
+
+    has_payload_weather = (
+        payload_temp is not None and
+        payload_humidity is not None and
+        payload_rainfall is not None
     )
-    humidity = safe_float(
-        (api_values or {}).get("humidity") if api_values else payload.get("humidity"),
-        target["humidity"],
-    )
-    rainfall = safe_float(
-        (api_values or {}).get("rainfall") if api_values else payload.get("rainfall"),
-        target["rainfall"],
-    )
+
+    if api_values is not None:
+        temperature = safe_float(api_values.get("temperature"), float("nan"))
+        humidity = safe_float(api_values.get("humidity"), float("nan"))
+        rainfall = safe_float(api_values.get("rainfall"), float("nan"))
+        source = "open-meteo"
+    elif has_payload_weather:
+        temperature = safe_float(payload_temp, float("nan"))
+        humidity = safe_float(payload_humidity, float("nan"))
+        rainfall = safe_float(payload_rainfall, float("nan"))
+        source = "payload"
+    else:
+        # No real weather data available — return explicit error context
+        return {
+            "error": True,
+            "errorCode": "WEATHER_DATA_UNAVAILABLE",
+            "message": "No weather data available. Provide latitude/longitude or temperature/humidity/rainfall in the request.",
+            "temperature": None,
+            "humidity": None,
+            "rainfall": None,
+            "heatStress": None,
+            "excessRainfallRisk": None,
+            "humidityDiseaseRisk": None,
+            "riskScore": 0.0,
+            "riskLabel": "Unknown",
+            "source": "none",
+            "forecast": _build_forecast(0.0),
+        }
+
+    import math as _math
+    if _math.isnan(temperature) or _math.isnan(humidity) or _math.isnan(rainfall):
+        return {
+            "error": True,
+            "errorCode": "WEATHER_DATA_INVALID",
+            "message": "Weather API returned invalid values. Provide valid temperature/humidity/rainfall.",
+            "temperature": None,
+            "humidity": None,
+            "rainfall": None,
+            "heatStress": None,
+            "excessRainfallRisk": None,
+            "humidityDiseaseRisk": None,
+            "riskScore": 0.0,
+            "riskLabel": "Unknown",
+            "source": source,
+            "forecast": _build_forecast(0.0),
+        }
 
     heat_stress = clamp(abs(temperature - target["temp"]) * 5.2, 0.0, 100.0)
     excess_rainfall_risk = clamp(max(0.0, rainfall - target["rainfall"]) * 1.45, 0.0, 100.0)
@@ -153,11 +198,8 @@ def get_weather_context(payload: Dict, crop_key: str = "") -> Dict:
         100.0,
     )
 
-    source = "payload"
-    if api_values and api_values.get("source") == "open-meteo":
-        source = "open-meteo"
-
     return {
+        "error": False,
         "temperature": round(temperature, 2),
         "humidity": round(humidity, 2),
         "rainfall": round(rainfall, 2),

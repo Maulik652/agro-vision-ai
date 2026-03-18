@@ -208,6 +208,13 @@ const SellCrop = () => {
     offer_responded: () => { if (activeTab === "offers") fetchOffers(); },
     new_order: () => { if (activeTab === "orders") fetchOrders(); },
     order_paid: () => { if (activeTab === "orders") fetchOrders(); },
+    crop_price_update: ({ cropId, price }) => {
+      setListings((prev) =>
+        prev.map((l) =>
+          (l._id?.toString() ?? l.id) === cropId ? { ...l, price } : l
+        )
+      );
+    },
   });
 
   /* ─── Fetch Helpers ──────────────────────────────────────────────── */

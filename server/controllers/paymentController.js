@@ -1,6 +1,7 @@
 import * as svc from "../services/paymentService.js";
 import { getCache, setCache } from "../config/redis.js";
 import Order from "../models/Order.js";
+import { emitAdminActivity } from "../realtime/adminNamespace.js";
 
 const err = (res, e) => res.status(e.status ?? 500).json({ success: false, message: e.message });
 
@@ -83,12 +84,20 @@ export const verifyPayment = async (req, res) => {
     const body    = req.validatedBody ?? req.body;
 
     let data;
-    if (body.razorpay_payment_id) {
+    if (body.wallet === true) {
+      data = await svc.verifyWallet(buyerId, body.parentOrderId);
+    } else if (body.razorpay_payment_id) {
       data = await svc.verifyRazorpay(buyerId, body);
     } else if (body.stripe_payment_intent) {
       data = await svc.verifyStripe(buyerId, body);
     } else {
       return res.status(400).json({ success: false, message: "Missing payment data" });
+    }
+
+    // Notify admin live activity feed on successful payment
+    const amount = body.amount ?? data?.amount;
+    if (amount) {
+      emitAdminActivity({ type: "payment", message: `Payment ₹${amount} received`, time: new Date().toISOString() });
     }
 
     res.json({ success: true, data });

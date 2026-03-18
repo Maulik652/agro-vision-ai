@@ -5,9 +5,6 @@ import CropPriceHistory from "../models/CropPriceHistory.js";
 import Consultation from "../models/Consultation.js";
 import Advisory from "../models/Advisory.js";
 import { getOrSetCache } from "../config/redis.js";
-import axios from "axios";
-
-const AI_SERVICE_URL = process.env.AI_SERVICE_URL || "http://localhost:8000";
 const TTL = 120;
 
 const buildDateMatch = (from, to) => {
@@ -298,12 +295,7 @@ export const fetchUserAnalytics = async (filters = {}) => {
 
 /* ─── 8. AI Insights ─── */
 export const generateAIInsights = async (data) => {
-  try {
-    const res = await axios.post(`${AI_SERVICE_URL}/api/report-insights`, { data }, { timeout: 8000 });
-    return res.data?.insights || generateFallbackInsights(data);
-  } catch {
-    return generateFallbackInsights(data);
-  }
+  return generateFallbackInsights(data);
 };
 
 const generateFallbackInsights = (data) => {

@@ -2,8 +2,8 @@
 Buyer Dashboard AI microservice.
 
 Architecture decisions:
-- Models are trained in-memory at startup using synthetic-but-structured data so the
-  service is immediately usable in development environments.
+- Models are trained once and persisted to disk via joblib.
+  On subsequent startups the saved models are loaded directly — no retraining.
 - XGBoost is preferred for price prediction; if unavailable, a gradient boosting fallback
   keeps the API contract stable.
 - RandomForest is used for demand forecasting to provide robust non-linear estimates
@@ -12,12 +12,19 @@ Architecture decisions:
 
 from __future__ import annotations
 
+import os
 from typing import List
 
 import numpy as np
 from fastapi import FastAPI, Query
 from pydantic import BaseModel, Field
 from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor
+
+try:
+    import joblib
+    HAS_JOBLIB = True
+except Exception:
+    HAS_JOBLIB = False
 
 try:
     from xgboost import XGBRegressor
@@ -164,7 +171,35 @@ def train_example_models(seed: int = 42):
     }
 
 
-MODELS = train_example_models()
+_MODEL_DIR = os.path.join(os.path.dirname(__file__), "saved_models")
+_BUYER_MODEL_PATH = os.path.join(_MODEL_DIR, "buyer_dashboard_models.joblib")
+
+
+def _load_or_train_models(seed: int = 42) -> dict:
+    """Load persisted models from disk; train and save if not found."""
+    if HAS_JOBLIB and os.path.exists(_BUYER_MODEL_PATH):
+        try:
+            models = joblib.load(_BUYER_MODEL_PATH)
+            print(f"Loaded buyer dashboard models from {_BUYER_MODEL_PATH}")
+            return models
+        except Exception as exc:
+            print(f"Failed to load saved models ({exc}), retraining...")
+
+    print("Training buyer dashboard models (first run — will be saved for future startups)...")
+    models = train_example_models(seed=seed)
+
+    if HAS_JOBLIB:
+        os.makedirs(_MODEL_DIR, exist_ok=True)
+        try:
+            joblib.dump(models, _BUYER_MODEL_PATH)
+            print(f"Models saved to {_BUYER_MODEL_PATH}")
+        except Exception as exc:
+            print(f"Warning: could not save models ({exc})")
+
+    return models
+
+
+MODELS = _load_or_train_models()
 
 
 BASE_CROP_PRICES = {
