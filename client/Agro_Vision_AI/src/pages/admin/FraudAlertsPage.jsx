@@ -81,7 +81,10 @@ export default function FraudAlertsPage() {
                       <p className="text-xs text-slate-400 mt-0.5">{new Date(alert.createdAt).toLocaleString()}</p>
                     </div>
                     <button
-                      onClick={() => resolveMut.mutate({ id: alert._id, userId: alert.user?._id })}
+                      onClick={() => {
+                        const userId = alert.user?._id || alert.order?.buyer?._id || alert.order?.buyer || null;
+                        resolveMut.mutate({ id: alert._id, userId });
+                      }}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-600 text-xs font-medium hover:bg-slate-50 transition shrink-0"
                     >
                       <CheckCircle size={11} /> Resolve

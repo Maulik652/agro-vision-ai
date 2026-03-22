@@ -1,14 +1,44 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Star, Trash2, Flag, CheckCircle } from "lucide-react";
+import { Star, Trash2, Flag, CheckCircle, Radio } from "lucide-react";
 import { fetchAdminReviews, updateReviewStatus } from "../../api/adminApi";
+import { io } from "socket.io-client";
 import toast from "react-hot-toast";
+
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || "http://localhost:5000";
 
 export default function ReviewsPage() {
   const qc = useQueryClient();
   const [flagged, setFlagged] = useState(false);
   const [page, setPage] = useState(1);
+  const [isConnected, setIsConnected] = useState(false);
+  const socketRef = useRef(null);
+
+  // Real-time admin socket for live review updates
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    const socket = io(`${SOCKET_URL}/admin`, {
+      auth: { token },
+      transports: ["websocket", "polling"],
+    });
+    socketRef.current = socket;
+    socket.on("connect", () => setIsConnected(true));
+    socket.on("disconnect", () => setIsConnected(false));
+
+    // New review submitted anywhere on the platform
+    socket.on("new_review", () => {
+      qc.invalidateQueries({ queryKey: ["admin-reviews"] });
+      toast("New review submitted", { icon: "⭐", duration: 3000 });
+    });
+
+    // A review was moderated (by another admin session)
+    socket.on("review_moderated", () => {
+      qc.invalidateQueries({ queryKey: ["admin-reviews"] });
+    });
+
+    return () => { socket.disconnect(); socketRef.current = null; };
+  }, [qc]);
 
   const { data, isLoading } = useQuery({
     queryKey: ["admin-reviews", { flagged, page }],
@@ -31,7 +61,11 @@ export default function ReviewsPage() {
         <h1 className="text-2xl font-bold text-slate-900" style={{ fontFamily: "Bricolage Grotesque, sans-serif" }}>
           Trust & Review System
         </h1>
-        <p className="text-sm text-slate-500 mt-0.5">{total} total reviews</p>
+        <div className="flex items-center gap-2 mt-0.5">
+          <p className="text-sm text-slate-500">{total} total reviews</p>
+          <Radio size={10} className={isConnected ? "text-emerald-500 animate-pulse" : "text-slate-300"} />
+          <span className="text-xs text-slate-400">{isConnected ? "Live" : "Offline"}</span>
+        </div>
       </div>
 
       <div className="flex gap-3">
@@ -60,7 +94,7 @@ export default function ReviewsPage() {
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.05 }}
-                className={`rounded-2xl bg-white border shadow-sm p-4 ${r.flagged ? "border-red-200" : "border-slate-100"}`}
+                className={`rounded-2xl bg-white border shadow-sm p-4 ${r.status === "flagged" ? "border-red-200" : "border-slate-100"}`}
               >
                 <div className="flex items-start justify-between mb-2">
                   <div>
@@ -71,7 +105,7 @@ export default function ReviewsPage() {
                       ))}
                     </div>
                   </div>
-                  {r.flagged && (
+                  {r.status === "flagged" && (
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-700">Flagged</span>
                   )}
                 </div>

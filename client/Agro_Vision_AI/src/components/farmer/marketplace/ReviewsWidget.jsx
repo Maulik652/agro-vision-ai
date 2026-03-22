@@ -1,7 +1,12 @@
 import { motion } from "framer-motion";
-import { Star, MessageSquare, TrendingUp, Loader2 } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { Star, MessageSquare, TrendingUp, Loader2, Radio } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useRef, useState } from "react";
+import { io } from "socket.io-client";
 import { getMarketReviews } from "../../../api/farmerMarketplaceApi";
+import toast from "react-hot-toast";
+
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || "http://localhost:5000";
 
 const StarRow = ({ rating }) => (
   <div className="flex gap-0.5">
@@ -12,12 +17,35 @@ const StarRow = ({ rating }) => (
 );
 
 export default function ReviewsWidget({ compact = false }) {
+  const qc = useQueryClient();
+  const [isConnected, setIsConnected] = useState(false);
+  const socketRef = useRef(null);
+
   const { data, isLoading } = useQuery({
     queryKey: ["farmerReviews"],
     queryFn: getMarketReviews,
     staleTime: 120000,
     retry: 1,
   });
+
+  // Real-time: listen for new reviews on this farmer's profile
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    const socket = io(SOCKET_URL, {
+      auth: { token },
+      transports: ["websocket", "polling"],
+    });
+    socketRef.current = socket;
+    socket.on("connect", () => setIsConnected(true));
+    socket.on("disconnect", () => setIsConnected(false));
+
+    socket.on("new_review", ({ rating, sentiment }) => {
+      qc.invalidateQueries({ queryKey: ["farmerReviews"] });
+      toast(`New ${sentiment || ""} review — ${rating}★`, { icon: "⭐", duration: 4000 });
+    });
+
+    return () => { socket.disconnect(); socketRef.current = null; };
+  }, [qc]);
 
   const reviews = data?.reviews || data || [];
   const avgRating = data?.avgRating || 0;
@@ -45,6 +73,7 @@ export default function ReviewsWidget({ compact = false }) {
         </div>
         {avgRating > 0 && (
           <div className="ml-auto flex items-center gap-1.5">
+            <Radio size={9} className={isConnected ? "text-emerald-500 animate-pulse" : "text-slate-300"} />
             <Star size={14} className="fill-amber-400 text-amber-400" />
             <span className="text-sm font-black text-amber-700">{avgRating.toFixed(1)}</span>
           </div>

@@ -15,7 +15,7 @@ const notificationSchema = new mongoose.Schema(
         "offer_received", "offer_accepted", "offer_rejected",
         "order_update", "order_cancelled", "price_alert", "weather_alert",
         "crop_reminder", "harvest_ready", "payment_received",
-        "new_offer", "scan_result", "system", "farmgpt"
+        "new_offer", "scan_result", "system", "farmgpt", "admin_broadcast"
       ]
     },
     title: {

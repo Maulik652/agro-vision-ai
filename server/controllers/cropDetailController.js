@@ -4,6 +4,7 @@ import CropReview from "../models/CropReview.js";
 import CropPriceHistory from "../models/CropPriceHistory.js";
 import User from "../models/User.js";
 import { getCache, setCache, deleteCache } from "../config/redis.js";
+import { getSocketServer } from "../realtime/socketServer.js";
 
 const DETAIL_TTL = 300;   // 5 min
 const SIMILAR_TTL = 600;  // 10 min
@@ -270,6 +271,25 @@ export const upsertCropReview = async (req, res) => {
 
     // Bust reviews cache for this crop
     await deleteCache(`crop_reviews_${id}_1_10`);
+
+    // Emit real-time event to all viewers of this crop detail page
+    const io = getSocketServer();
+    if (io) {
+      io.to(`crop:${id}`).emit("crop_review_added", {
+        cropId: id,
+        rating,
+        emittedAt: new Date().toISOString(),
+      });
+      // Also notify the farmer
+      if (listing.farmer) {
+        io.to(`farmer:${String(listing.farmer)}`).emit("new_review", {
+          cropId: id,
+          rating,
+          sentiment: "unanalyzed",
+          emittedAt: new Date().toISOString(),
+        });
+      }
+    }
 
     return res.status(200).json({
       success: true,

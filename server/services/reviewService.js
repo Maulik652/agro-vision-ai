@@ -126,6 +126,16 @@ export const createReview = async (reviewerId, body) => {
 
   emit("new_review", { targetUserId: String(targetUserId), reviewId: String(review._id), rating, sentiment });
 
+  // Also notify admin namespace for real-time moderation feed
+  const io = getSocketServer();
+  if (io) {
+    const populated = await review.populate("reviewer", "name avatar role");
+    io.of("/admin").to("admins").emit("new_review", {
+      review: populated,
+      emittedAt: new Date().toISOString(),
+    });
+  }
+
   return review.populate("reviewer", "name avatar role");
 };
 

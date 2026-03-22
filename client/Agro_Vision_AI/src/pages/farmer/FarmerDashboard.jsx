@@ -46,6 +46,7 @@ import {
 } from "recharts";
 import api from "../../api/axios";
 import { useAuth } from "../../context/AuthContext";
+import useAccountSocket from "../../hooks/useAccountSocket";
 import AdvisoryDashboardWidget from "../../components/publicAdvisory/AdvisoryDashboardWidget.jsx";
 import SchemesDashboardWidget from "../../components/schemes/SchemesDashboardWidget.jsx";
 
@@ -887,6 +888,7 @@ const riskBadgeStyles = {
 
 const FarmerDashboard = () => {
   const { user } = useAuth();
+  useAccountSocket();
 
   const [dashboard, setDashboard] = useState(FALLBACK_DASHBOARD);
   const [loading, setLoading] = useState(true);

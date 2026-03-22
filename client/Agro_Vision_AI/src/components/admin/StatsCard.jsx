@@ -36,7 +36,7 @@ export default function StatsCard({ label, value, icon: Icon, gradient, change, 
     >
       <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${gradient}`} />
       <div className="flex items-start justify-between mb-4 pt-1">
-        <div className={`inline-flex rounded-xl p-2.5 bg-gradient-to-br ${gradient} bg-opacity-10`}>
+        <div className={`inline-flex rounded-xl p-2.5 bg-gradient-to-br ${gradient} opacity-90`}>
           <Icon size={18} className="text-white" />
         </div>
         {change !== undefined && (

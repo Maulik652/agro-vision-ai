@@ -5,12 +5,15 @@ import { fetchAdminOrders, updateOrderStatus } from "../../api/adminApi";
 import toast from "react-hot-toast";
 
 const STATUS_BADGE = {
-  pending: "bg-amber-100 text-amber-700",
-  confirmed: "bg-blue-100 text-blue-700",
-  shipped: "bg-purple-100 text-purple-700",
-  delivered: "bg-green-100 text-green-700",
-  completed: "bg-emerald-100 text-emerald-800",
-  cancelled: "bg-red-100 text-red-700",
+  pending_payment: "bg-slate-100 text-slate-600",
+  paid:       "bg-blue-100 text-blue-700",
+  processing: "bg-indigo-100 text-indigo-700",
+  pending:    "bg-amber-100 text-amber-700",
+  confirmed:  "bg-blue-100 text-blue-700",
+  shipped:    "bg-purple-100 text-purple-700",
+  delivered:  "bg-green-100 text-green-700",
+  completed:  "bg-emerald-100 text-emerald-800",
+  cancelled:  "bg-red-100 text-red-700",
 };
 
 export default function OrdersPage() {
@@ -43,7 +46,7 @@ export default function OrdersPage() {
       </div>
 
       <div className="flex gap-2 flex-wrap">
-        {["", "pending", "confirmed", "shipped", "delivered", "completed", "cancelled"].map((s) => (
+        {["", "pending_payment", "paid", "processing", "shipped", "delivered", "completed", "cancelled"].map((s) => (
           <button
             key={s}
             onClick={() => { setStatus(s); setPage(1); }}
@@ -82,19 +85,20 @@ export default function OrdersPage() {
                       <td className="px-4 py-3 font-semibold text-slate-800">₹{(o.totalAmount || 0).toLocaleString("en-IN")}</td>
                       <td className="px-4 py-3 text-slate-500">{o.items?.length || 0}</td>
                       <td className="px-4 py-3">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${STATUS_BADGE[o.status] || "bg-slate-100 text-slate-600"}`}>
-                          {o.status}
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${STATUS_BADGE[o.orderStatus] || "bg-slate-100 text-slate-600"}`}>
+                          {o.orderStatus}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-slate-400 text-xs">{new Date(o.createdAt).toLocaleDateString()}</td>
                       <td className="px-4 py-3">
                         <select
-                          value={o.status}
+                          value={o.orderStatus}
                           onChange={(e) => statusMut.mutate({ id: o._id, status: e.target.value })}
                           className="text-xs px-2 py-1 rounded-lg border border-slate-200 bg-white outline-none"
                         >
-                          <option value="pending">Pending</option>
-                          <option value="confirmed">Confirmed</option>
+                          <option value="pending_payment">Pending Payment</option>
+                          <option value="paid">Paid</option>
+                          <option value="processing">Processing</option>
                           <option value="shipped">Shipped</option>
                           <option value="delivered">Delivered</option>
                           <option value="completed">Completed</option>

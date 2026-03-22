@@ -17,13 +17,13 @@ export default function ScanReportsPage() {
     queryFn: () => fetchScanReportsDeep({ cropType, page, limit: 20 }),
   });
 
-  const reports = data?.data || [];
-  const topIssues = data?.topIssues || [];
-  const healthDist = (data?.healthDist || []).map((d, i) => ({
-    name: HEALTH_LABELS[i] || `${d._id}+`,
+  const reports = data?.data?.reports || [];
+  const topIssues = (data?.data?.topIssues || []).filter((t) => t._id);
+  const healthDist = (data?.data?.healthDist || []).map((d, i) => ({
+    name: HEALTH_LABELS[i] || "Excellent",
     value: d.count,
   }));
-  const riskStats = data?.riskStats || {};
+  const riskStats = data?.data?.riskStats || {};
   const total = data?.total || 0;
   const pages = data?.pages || 1;
 

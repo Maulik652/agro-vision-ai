@@ -11,6 +11,7 @@ import Notification from "../models/Notification.js";
 import WalletTransaction from "../models/WalletTransaction.js";
 import { deleteCache } from "../config/redis.js";
 import { getSocketServer } from "../realtime/socketServer.js";
+import { emitAdminActivity } from "../realtime/adminNamespace.js";
 
 /* ─── helpers ─────────────────────────────────────────────── */
 const logAction = async (req, action, target, targetId, details = {}) => {
@@ -170,6 +171,29 @@ export const updateUserStatus = async (req, res) => {
     );
     if (!user) return res.status(404).json({ message: "User not found" });
     await logAction(req, `User status → ${status}`, "User", req.params.id);
+
+    // Notify the affected user in real-time
+    const io = getSocketServer();
+    if (io) {
+      io.to(`user:${req.params.id}`).emit("account_status_changed", {
+        status,
+        message:
+          status === "suspended"
+            ? "Your account has been suspended by an administrator."
+            : status === "blocked"
+            ? "Your account has been blocked. Please contact support."
+            : "Your account has been reactivated.",
+        emittedAt: new Date().toISOString(),
+      });
+    }
+
+    // Push to admin live activity feed
+    emitAdminActivity({
+      type: "user",
+      message: `${user.name} (${user.role}) status → ${status}`,
+      time: new Date().toISOString(),
+    });
+
     ok(res, user);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -182,6 +206,23 @@ export const updateUserRole = async (req, res) => {
     const user = await User.findByIdAndUpdate(req.params.id, { role }, { new: true });
     if (!user) return res.status(404).json({ message: "User not found" });
     await logAction(req, `User role → ${role}`, "User", req.params.id);
+
+    // Notify the affected user in real-time — they need to re-login for new role
+    const io = getSocketServer();
+    if (io) {
+      io.to(`user:${req.params.id}`).emit("account_role_changed", {
+        role,
+        message: `Your account role has been changed to ${role}. Please log in again.`,
+        emittedAt: new Date().toISOString(),
+      });
+    }
+
+    emitAdminActivity({
+      type: "user",
+      message: `${user.name} role → ${role}`,
+      time: new Date().toISOString(),
+    });
+
     ok(res, user);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -258,11 +299,11 @@ export const getAllOrders = async (req, res) => {
 export const updateOrderStatus = async (req, res) => {
   try {
     const { status } = req.body;
-    const allowed = ["pending", "confirmed", "shipped", "delivered", "completed", "cancelled"];
+    const allowed = ["pending_payment", "paid", "processing", "shipped", "delivered", "completed", "cancelled"];
     if (!allowed.includes(status)) {
       return res.status(400).json({ message: "Invalid status value." });
     }
-    const order = await Order.findByIdAndUpdate(req.params.id, { orderStatus: status, status }, { new: true })
+    const order = await Order.findByIdAndUpdate(req.params.id, { orderStatus: status }, { new: true })
       .populate("buyer", "_id name")
       .populate("farmer", "_id name");
     if (!order) return res.status(404).json({ message: "Order not found" });
@@ -286,6 +327,13 @@ export const updateOrderStatus = async (req, res) => {
     }
 
     await logAction(req, `Order status → ${status}`, "Order", req.params.id);
+
+    emitAdminActivity({
+      type: "order",
+      message: `Order #${order._id.toString().slice(-6)} status → ${status}`,
+      time: new Date().toISOString(),
+    });
+
     ok(res, order);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -376,14 +424,16 @@ export const getAIStats = async (req, res) => {
 /* ─── REVIEWS ──────────────────────────────────────────────── */
 export const getAllReviews = async (req, res) => {
   try {
-    const { page = 1, limit = 20, flagged } = req.query;
+    const { page = 1, limit = 20, flagged, status } = req.query;
     const filter = {};
-    if (flagged === "true") filter.flagged = true;
+    // Support both ?flagged=true (legacy) and ?status=flagged
+    if (flagged === "true") filter.status = "flagged";
+    else if (status) filter.status = status;
 
     const skip = (Number(page) - 1) * Number(limit);
     const [reviews, total] = await Promise.all([
       Review.find(filter).sort({ createdAt: -1 }).skip(skip).limit(Number(limit))
-        .populate("reviewer", "name email").lean(),
+        .populate("reviewer", "name email avatar role").lean(),
       Review.countDocuments(filter),
     ]);
 
@@ -396,9 +446,28 @@ export const getAllReviews = async (req, res) => {
 export const updateReviewStatus = async (req, res) => {
   try {
     const { action } = req.body; // "approve" | "remove" | "flag"
-    const update = action === "remove" ? { removed: true } : action === "flag" ? { flagged: true } : { flagged: false };
-    const review = await Review.findByIdAndUpdate(req.params.id, update, { new: true });
+    const statusMap = { approve: "active", remove: "removed", flag: "flagged" };
+    const newStatus = statusMap[action];
+    if (!newStatus) return res.status(400).json({ message: "Invalid action" });
+
+    const review = await Review.findByIdAndUpdate(
+      req.params.id,
+      { status: newStatus, moderatedAt: new Date(), moderatedBy: req.user._id },
+      { new: true }
+    ).populate("reviewer", "name email avatar role");
     if (!review) return res.status(404).json({ message: "Review not found" });
+
+    // Emit real-time update to admin namespace
+    const io = getSocketServer();
+    if (io) {
+      io.of("/admin").to("admins").emit("review_moderated", {
+        reviewId: review._id,
+        status: newStatus,
+        action,
+        emittedAt: new Date().toISOString(),
+      });
+    }
+
     await logAction(req, `Review ${action}`, "Review", req.params.id);
     ok(res, review);
   } catch (err) {

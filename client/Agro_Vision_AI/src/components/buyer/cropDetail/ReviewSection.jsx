@@ -1,8 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Star, RefreshCw, ThumbsUp } from "lucide-react";
+import { Star, RefreshCw, ThumbsUp, Radio } from "lucide-react";
 import toast from "react-hot-toast";
+import { io } from "socket.io-client";
 import { fetchCropReviews, submitCropReview } from "../../../api/cropDetailApi";
+
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || "http://localhost:5000";
 
 const StarRating = ({ value, onChange, size = 18 }) => (
   <div className="flex items-center gap-1">
@@ -26,6 +29,8 @@ export default function ReviewSection({ cropId }) {
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [isConnected, setIsConnected] = useState(false);
+  const socketRef = useRef(null);
 
   const load = () => {
     setLoading(true);
@@ -36,6 +41,30 @@ export default function ReviewSection({ cropId }) {
   };
 
   useEffect(() => { if (cropId) load(); }, [cropId]);
+
+  // Real-time: listen for new crop reviews via the crop room
+  useEffect(() => {
+    if (!cropId) return;
+    const token = localStorage.getItem("token");
+    const socket = io(SOCKET_URL, { auth: { token }, transports: ["websocket", "polling"] });
+    socketRef.current = socket;
+    socket.on("connect", () => {
+      setIsConnected(true);
+      socket.emit("join_crop_room", { cropId });
+    });
+    socket.on("disconnect", () => setIsConnected(false));
+
+    // When any buyer submits a review for this crop, reload
+    socket.on("crop_review_added", ({ cropId: cid }) => {
+      if (String(cid) === String(cropId)) load();
+    });
+
+    return () => {
+      socket.emit("leave_crop_room", { cropId });
+      socket.disconnect();
+      socketRef.current = null;
+    };
+  }, [cropId]);
 
   const handleSubmit = async () => {
     if (!comment.trim()) return;
@@ -62,6 +91,7 @@ export default function ReviewSection({ cropId }) {
         <h3 className="text-slate-800 font-semibold text-sm flex items-center gap-2">
           <Star size={15} className="text-amber-400" /> Buyer Reviews
           <span className="text-slate-400 font-normal">({reviews.length})</span>
+          <Radio size={9} className={isConnected ? "text-emerald-500 animate-pulse" : "text-slate-300"} />
         </h3>
         {reviews.length > 0 && (
           <div className="flex items-center gap-2">

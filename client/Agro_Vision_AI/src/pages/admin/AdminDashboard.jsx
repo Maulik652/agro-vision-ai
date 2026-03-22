@@ -141,11 +141,11 @@ export default function AdminDashboard() {
                     <td className="py-2.5 font-semibold text-slate-800">₹{(o.totalAmount || 0).toLocaleString("en-IN")}</td>
                     <td className="py-2.5">
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-                        o.status === "delivered" ? "bg-green-100 text-green-700" :
-                        o.status === "pending" ? "bg-amber-100 text-amber-700" :
+                        o.orderStatus === "delivered" ? "bg-green-100 text-green-700" :
+                        o.orderStatus === "pending_payment" || o.orderStatus === "pending" ? "bg-amber-100 text-amber-700" :
                         "bg-blue-100 text-blue-700"
                       }`}>
-                        {o.status}
+                        {o.orderStatus}
                       </span>
                     </td>
                   </tr>

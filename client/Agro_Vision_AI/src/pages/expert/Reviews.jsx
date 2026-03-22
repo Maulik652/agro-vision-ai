@@ -1,7 +1,9 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { Star, RefreshCw, MessageSquare, ShieldAlert, Leaf, BarChart2, PenLine, SlidersHorizontal, X } from "lucide-react";
+import { Star, RefreshCw, MessageSquare, ShieldAlert, Leaf, BarChart2, PenLine, SlidersHorizontal, X, Radio } from "lucide-react";
+import { io } from "socket.io-client";
+import toast from "react-hot-toast";
 
 import ReviewOverview      from "../../components/reviews/ReviewOverview.jsx";
 import ReviewList          from "../../components/reviews/ReviewList.jsx";
@@ -18,6 +20,7 @@ import {
 } from "../../api/reviewsApi.js";
 
 const STALE = 60_000;
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || "http://localhost:5000";
 
 const TABS = [
   { key: "overview",    label: "Overview",    icon: Star         },
@@ -34,11 +37,41 @@ const Reviews = () => {
   const [feedFilters,  setFeedFilters]  = useState({ sort: "latest", role: "", page: 1 });
   const [modFilters,   setModFilters]   = useState({ page: 1 });
   const [qualFilters,  setQualFilters]  = useState({ page: 1 });
+  const [isConnected,  setIsConnected]  = useState(false);
+  const socketRef = useRef(null);
   const qc = useQueryClient();
 
   const mergeFeed = (patch) => setFeedFilters(p => ({ ...p, ...patch }));
   const mergeMod  = (patch) => setModFilters(p => ({ ...p, ...patch }));
   const mergeQual = (patch) => setQualFilters(p => ({ ...p, ...patch }));
+
+  // Real-time: listen for new reviews targeting this expert
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    const socket = io(SOCKET_URL, {
+      auth: { token },
+      transports: ["websocket", "polling"],
+    });
+    socketRef.current = socket;
+    socket.on("connect", () => setIsConnected(true));
+    socket.on("disconnect", () => setIsConnected(false));
+
+    // Server emits this to user:<expertId> room when someone reviews them
+    socket.on("new_review", ({ rating, sentiment }) => {
+      qc.invalidateQueries({ queryKey: ["reviews-overview"] });
+      qc.invalidateQueries({ queryKey: ["reviews-feed"] });
+      qc.invalidateQueries({ queryKey: ["reviews-analytics"] });
+      qc.invalidateQueries({ queryKey: ["moderation-queue"] });
+      toast(`New ${sentiment || ""} review received — ${rating}★`, { icon: "⭐", duration: 4000 });
+    });
+
+    // Moderation queue update (when admin moderates a review)
+    socket.on("review_flagged", () => {
+      qc.invalidateQueries({ queryKey: ["moderation-queue"] });
+    });
+
+    return () => { socket.disconnect(); socketRef.current = null; };
+  }, [qc]);
 
   const overview    = useQuery({ queryKey: ["reviews-overview"],                    queryFn: fetchOverview,                                  staleTime: STALE });
   const feed        = useQuery({ queryKey: ["reviews-feed",    feedFilters],        queryFn: () => fetchFeed(feedFilters),                   staleTime: STALE, enabled: tab === "reviews"    });
@@ -65,7 +98,11 @@ const Reviews = () => {
               </div>
               <div className="hidden sm:block">
                 <h1 className="text-base font-bold text-slate-900 leading-none">Reviews & Reputation</h1>
-                <p className="text-[11px] text-slate-400 mt-0.5">Trust & Feedback Engine</p>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <p className="text-[11px] text-slate-400">Trust & Feedback Engine</p>
+                  <Radio size={9} className={isConnected ? "text-emerald-500 animate-pulse" : "text-slate-300"} />
+                  <span className="text-[10px] text-slate-400">{isConnected ? "Live" : "Offline"}</span>
+                </div>
               </div>
             </div>
 

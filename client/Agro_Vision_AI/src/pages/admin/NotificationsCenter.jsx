@@ -78,7 +78,9 @@ export default function NotificationsCenter() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-slate-800">{n.title || n.message}</p>
-                      {n.body && <p className="text-xs text-slate-500 mt-0.5 truncate">{n.body}</p>}
+                      {n.message && n.message !== n.title && (
+                        <p className="text-xs text-slate-500 mt-0.5 truncate">{n.message}</p>
+                      )}
                       <p className="text-xs text-slate-400 mt-1">{new Date(n.createdAt).toLocaleString()}</p>
                     </div>
                     {!n.read && (

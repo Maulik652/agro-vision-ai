@@ -50,6 +50,28 @@ const NotificationBell = () => {
       toast(notif.title || notif.message || "New notification", { icon: "🔔" });
     });
 
+    // Admin broadcast — insert as a synthetic bell item immediately
+    socket.on("admin_broadcast", ({ title, message, type, emittedAt }) => {
+      const syntheticNotif = {
+        _id: `broadcast-${Date.now()}`,
+        title,
+        message,
+        type: type || "announcement",
+        read: false,
+        createdAt: emittedAt || new Date().toISOString(),
+      };
+      setItems((prev) => [syntheticNotif, ...prev]);
+      toast(
+        (t) => (
+          <div className="flex flex-col gap-0.5 max-w-xs">
+            <p className="font-semibold text-sm text-slate-800">{title}</p>
+            <p className="text-xs text-slate-600">{message}</p>
+          </div>
+        ),
+        { icon: "📢", duration: 8000, id: `ab-${Date.now()}` }
+      );
+    });
+
     return () => {
       socket.disconnect();
       socketRef.current = null;
@@ -79,7 +101,14 @@ const NotificationBell = () => {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
+  const isSynthetic = (id) => String(id).startsWith("broadcast-");
+
   const handleRead = async (id) => {
+    // Synthetic broadcast items have no DB doc — just mark locally
+    if (isSynthetic(id)) {
+      setItems((prev) => prev.map((n) => (n._id === id ? { ...n, read: true } : n)));
+      return;
+    }
     try {
       await markNotificationRead(id);
       setItems((prev) => prev.map((n) => (n._id === id ? { ...n, read: true } : n)));
@@ -94,6 +123,11 @@ const NotificationBell = () => {
   };
 
   const handleDelete = async (id) => {
+    // Synthetic items — just remove from local state
+    if (isSynthetic(id)) {
+      setItems((prev) => prev.filter((n) => n._id !== id));
+      return;
+    }
     try {
       await deleteNotification(id);
       setItems((prev) => prev.filter((n) => n._id !== id));

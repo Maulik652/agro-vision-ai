@@ -12,6 +12,8 @@ import Notification from "../models/Notification.js";
 import AdminActionLog from "../models/AdminActionLog.js";
 import CropListing from "../models/CropListing.js";
 import Payment from "../models/Payment.js";
+import { getSocketServer } from "../realtime/socketServer.js";
+import { emitAdminActivity } from "../realtime/adminNamespace.js";
 
 const logAction = async (req, action, target, targetId, details = {}) => {
   try {
@@ -325,16 +327,18 @@ export const getScanReportsDeep = async (req, res) => {
         .lean(),
       CropScanReport.countDocuments(filter),
       CropScanReport.aggregate([
+        { $match: { primaryIssue: { $exists: true, $ne: "" } } },
         { $group: { _id: "$primaryIssue", count: { $sum: 1 } } },
         { $sort: { count: -1 } }, { $limit: 10 },
       ]),
       CropScanReport.aggregate([
         { $bucket: {
           groupBy: "$healthScore",
-          boundaries: [0, 25, 50, 75, 100],
-          default: "100",
+          boundaries: [0, 25, 50, 75, 101],
+          default: "other",
           output: { count: { $sum: 1 } },
         }},
+        { $match: { _id: { $ne: "other" } } },
       ]),
       CropScanReport.aggregate([
         { $group: {
@@ -397,6 +401,32 @@ export const broadcastNotification = async (req, res) => {
 
     await Notification.insertMany(notifications, { ordered: false });
     await logAction(req, `Broadcast to ${targetRole || "all"}: ${title}`, "Notification", null);
+
+    // Emit real-time socket broadcast to all connected users in target rooms
+    const io = getSocketServer();
+    if (io) {
+      const broadcastPayload = {
+        title,
+        message,
+        type,
+        targetRole: targetRole || "all",
+        emittedAt: new Date().toISOString(),
+      };
+      if (!targetRole || targetRole === "all") {
+        io.emit("admin_broadcast", broadcastPayload);
+      } else {
+        const room = targetRole === "farmer" ? "farmers" : targetRole === "buyer" ? "buyers" : `${targetRole}s`;
+        io.to(room).emit("admin_broadcast", broadcastPayload);
+      }
+    }
+
+    // Push to admin live activity feed
+    emitAdminActivity({
+      type: "user",
+      message: `Broadcast sent to ${notifications.length} ${targetRole || "all"} users: "${title}"`,
+      time: new Date().toISOString(),
+    });
+
     ok(res, { sentCount: notifications.length, targetRole: targetRole || "all" });
   } catch (err) { res.status(500).json({ message: err.message }); }
 };

@@ -8,6 +8,7 @@ import { useAuth } from "../../context/AuthContext";
 import { connectBuyerDashboardSocket } from "../../realtime/dashboardSocket";
 import { useBuyerDashboardStore } from "../../store/buyerDashboardStore";
 import useOfferSocket from "../../hooks/useOfferSocket";
+import useAccountSocket from "../../hooks/useAccountSocket";
 
 import {
   fetchDashboardAIInsights,
@@ -46,6 +47,7 @@ const greetingByHour = () => {
 export default function BuyerDashboard() {
   const { user } = useAuth();
   const socketRef = useRef(null);
+  useAccountSocket();
   const qc = useQueryClient();
 
   const {
