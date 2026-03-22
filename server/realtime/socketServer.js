@@ -9,6 +9,9 @@ import { registerAdminNamespace } from "./adminNamespace.js";
 let ioInstance = null;
 const CHAT_HISTORY_LIMIT = 40;
 
+// cropId → Set of socketIds currently viewing that crop detail page
+const cropViewers = new Map();
+
 const verifyOptions = {
   issuer: process.env.JWT_ISSUER || "agrovision-api",
   audience: process.env.JWT_AUDIENCE || "agrovision-client"
@@ -187,8 +190,39 @@ export const initializeSocketServer = (httpServer, { allowedOrigins = [] } = {})
     }
 
     if (role === "farmer" && userId) {
+      socket.join("farmers");
       socket.join(`farmer:${userId}`);
     }
+
+    /* ── Crop detail viewer tracking ── */
+    socket.on("join_crop_room", ({ cropId } = {}) => {
+      if (!cropId) return;
+      const cid = String(cropId);
+      socket.join(`crop:${cid}`);
+      if (!cropViewers.has(cid)) cropViewers.set(cid, new Set());
+      cropViewers.get(cid).add(socket.id);
+      const count = cropViewers.get(cid).size;
+      ioInstance.to(`crop:${cid}`).emit("viewer_count", { cropId: cid, count });
+    });
+
+    socket.on("leave_crop_room", ({ cropId } = {}) => {
+      if (!cropId) return;
+      const cid = String(cropId);
+      socket.leave(`crop:${cid}`);
+      cropViewers.get(cid)?.delete(socket.id);
+      const count = cropViewers.get(cid)?.size ?? 0;
+      ioInstance.to(`crop:${cid}`).emit("viewer_count", { cropId: cid, count });
+    });
+
+    socket.on("disconnect", () => {
+      // Clean up viewer rooms on disconnect
+      cropViewers.forEach((viewers, cid) => {
+        if (viewers.has(socket.id)) {
+          viewers.delete(socket.id);
+          ioInstance.to(`crop:${cid}`).emit("viewer_count", { cropId: cid, count: viewers.size });
+        }
+      });
+    });
 
     socket.on("join_buyer_room", ({ userId: requestedUserId } = {}) => {
       if (userId && String(requestedUserId || "") === userId) {
@@ -441,6 +475,12 @@ export const emitCropPriceUpdate = (cropId, priceData) => {
     priceData,
     emittedAt: new Date().toISOString()
   });
+  // Also notify anyone on the specific crop detail page
+  ioInstance.to(`crop:${String(cropId)}`).emit("crop_price_update", {
+    cropId: String(cropId),
+    priceData,
+    emittedAt: new Date().toISOString()
+  });
 };
 
 export const emitToRoom = (room, event, payload) => {
@@ -516,8 +556,8 @@ export const emitStockUpdate = (cropId, newQuantity, outOfStock = false) => {
   };
   // Broadcast to all buyers (marketplace page)
   ioInstance.to("buyers").emit("stock_update", payload);
-  // Also broadcast globally so CropDetail pages pick it up
-  ioInstance.emit("stock_update", payload);
+  // Also broadcast to the specific crop detail room
+  ioInstance.to(`crop:${String(cropId)}`).emit("stock_update", payload);
 };
 
 /**
@@ -533,4 +573,29 @@ export const emitInventoryUpdate = (farmerId, payload = {}) => {
     ...payload,
     emittedAt: new Date().toISOString(),
   });
+};
+
+/**
+ * emitNewAdvisory
+ * Broadcasts a newly published advisory to all farmers and buyers.
+ * @param {object} advisory — the full advisory document
+ */
+export const emitNewAdvisory = (advisory) => {
+  if (!ioInstance) return;
+  const payload = { advisory, emittedAt: new Date().toISOString() };
+  ioInstance.to("farmers").emit("new_advisory", payload);
+  ioInstance.to("buyers").emit("new_advisory", payload);
+};
+
+/**
+ * emitAdvisoryBroadcast
+ * Sends an urgent alert broadcast to all farmers and buyers.
+ * @param {object} alert — { title, message, category, priority }
+ */
+export const emitAdvisoryBroadcast = (alert) => {
+  if (!ioInstance) return;
+  const payload = { ...alert, emittedAt: new Date().toISOString() };
+  ioInstance.to("farmers").emit("advisory_broadcast", payload);
+  ioInstance.to("buyers").emit("advisory_broadcast", payload);
+  ioInstance.to("buyers").emit("alert_notification", payload);
 };

@@ -5,13 +5,13 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Search, SlidersHorizontal, X, Leaf, ShoppingCart, MessageCircle,
   TrendingUp, TrendingDown, Star, MapPin, Package, ChevronLeft,
-  ChevronRight, Zap, BarChart2, Filter, RefreshCw, Eye, Award, AlertCircle
+  ChevronRight, Zap, BarChart2, Filter, RefreshCw, Eye, Award, AlertCircle,
+  Sparkles,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { searchCrops, getHighDemandCrops, addToCart } from "../../api/marketplaceApi";
 import useCartStore from "../../store/cartStore.js";
-import useStockSocket from "../../hooks/useStockSocket.js";
-import useOfferSocket from "../../hooks/useOfferSocket.js";
+import useMarketSocket from "../../hooks/useMarketSocket.js";
 
 const SORT_OPTIONS = [
   { value: "latest",        label: "Latest" },
@@ -62,7 +62,9 @@ function CropCard({ crop, onAddToCart, onChat, onView }) {
       whileHover={{ y: outOfStock ? 0 : -4 }}
       transition={{ duration: 0.22 }}
       className={`group relative bg-white border rounded-2xl overflow-hidden transition-all duration-300 cursor-pointer ${
-        outOfStock
+        crop._isNew
+          ? "border-green-400 ring-2 ring-green-200"
+          : outOfStock
           ? "border-slate-200 opacity-70"
           : "border-slate-100 hover:border-green-300 hover:shadow-md"
       }`}
@@ -84,6 +86,19 @@ function CropCard({ crop, onAddToCart, onChat, onView }) {
             <span className="px-3 py-1.5 rounded-full bg-red-600 text-white text-xs font-bold flex items-center gap-1.5">
               <AlertCircle size={12} /> Out of Stock
             </span>
+          </div>
+        )}
+
+        {/* New listing badge */}
+        {crop._isNew && (
+          <div className="absolute bottom-3 left-3">
+            <motion.span
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-green-600 text-white text-[10px] font-bold shadow-lg"
+            >
+              <Sparkles size={9} /> New Listing
+            </motion.span>
           </div>
         )}
 
@@ -112,7 +127,15 @@ function CropCard({ crop, onAddToCart, onChat, onView }) {
             {crop.variety ? <span className="text-slate-400 font-normal text-sm ml-1">· {crop.variety}</span> : null}
           </h3>
           <div className="text-right shrink-0">
-            <p className="text-green-700 font-bold text-lg leading-none">₹{crop.price}</p>
+            <motion.p
+              key={crop.price}
+              initial={crop._priceFlash ? { color: "#16a34a", scale: 1.1 } : false}
+              animate={{ color: "#15803d", scale: 1 }}
+              transition={{ duration: 0.6 }}
+              className="text-green-700 font-bold text-lg leading-none"
+            >
+              ₹{crop.price}
+            </motion.p>
             <p className="text-slate-400 text-[10px]">/{crop.quantityUnit ?? "kg"}</p>
           </div>
         </div>
@@ -369,25 +392,60 @@ export default function Marketplace() {
       .catch(() => {});
   }, []);
 
-  // Real-time stock updates via socket
-  useStockSocket(({ cropId, quantity, outOfStock }) => {
-    setCrops((prev) =>
-      prev.map((c) =>
-        (c.id ?? c._id) === cropId
-          ? { ...c, quantity, status: outOfStock ? "sold" : c.status }
-          : c
-      )
-    );
-  });
-
-  // Real-time price updates when farmer accepts a buyer offer
-  useOfferSocket({
-    crop_price_update: ({ cropId, price }) => {
+  // ── Real-time socket events ──────────────────────────────────────
+  useMarketSocket({
+    // Live stock updates → update quantity/status on cards
+    stock_update: ({ cropId, quantity, outOfStock }) => {
       setCrops((prev) =>
         prev.map((c) =>
-          (c.id ?? c._id) === cropId ? { ...c, price } : c
+          (c.id ?? c._id) === cropId
+            ? { ...c, quantity, status: outOfStock ? "sold" : c.status, _priceFlash: false }
+            : c
         )
       );
+    },
+    // Live price updates → flash the price on the card
+    crop_price_update: ({ cropId, price, priceData }) => {
+      const newPrice = price ?? priceData?.price;
+      if (!newPrice) return;
+      setCrops((prev) =>
+        prev.map((c) =>
+          (c.id ?? c._id) === cropId
+            ? { ...c, price: newPrice, _priceFlash: true }
+            : c
+        )
+      );
+      // Clear flash flag after animation
+      setTimeout(() => {
+        setCrops((prev) =>
+          prev.map((c) => ((c.id ?? c._id) === cropId ? { ...c, _priceFlash: false } : c))
+        );
+      }, 1200);
+    },
+    // New listing → prepend to feed with "New" badge
+    new_crop_listing: ({ listing }) => {
+      if (!listing) return;
+      const normalized = {
+        ...listing,
+        id: listing._id ?? listing.id,
+        _isNew: true,
+      };
+      setCrops((prev) => {
+        // Avoid duplicates
+        if (prev.some((c) => (c.id ?? c._id) === normalized.id)) return prev;
+        return [normalized, ...prev];
+      });
+      setPagination((p) => ({ ...p, total: p.total + 1 }));
+      toast.success(`New listing: ${listing.cropName ?? "Crop"} added`, {
+        icon: "🌱",
+        duration: 4000,
+      });
+      // Remove "new" badge after 30s
+      setTimeout(() => {
+        setCrops((prev) =>
+          prev.map((c) => ((c.id ?? c._id) === normalized.id ? { ...c, _isNew: false } : c))
+        );
+      }, 30000);
     },
   });
 

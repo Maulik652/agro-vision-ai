@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Eye, Share2, Heart } from "lucide-react";
+import { ArrowLeft, Eye, Share2, Heart, Users, Clock } from "lucide-react";
 import toast from "react-hot-toast";
 
 import CropGallery from "../../components/buyer/cropDetail/CropGallery";
@@ -21,8 +21,7 @@ import {
   addCropToCart, fetchFarmerDetail
 } from "../../api/cropDetailApi";
 import useCartStore from "../../store/cartStore.js";
-import useStockSocket from "../../hooks/useStockSocket.js";
-import useOfferSocket from "../../hooks/useOfferSocket.js";
+import useMarketSocket from "../../hooks/useMarketSocket.js";
 
 function Skeleton({ className }) {
   return <div className={`animate-pulse bg-slate-100 rounded-xl ${className}`} />;
@@ -64,6 +63,10 @@ export default function CropDetail() {
   const [showChat, setShowChat] = useState(false);
   const [wishlisted, setWishlisted] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
+  const [viewerCount, setViewerCount] = useState(1);
+  const [priceFlash, setPriceFlash] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState(null);
+  const socketRef = useRef(null);
 
   useEffect(() => {
     if (!cropId) { navigate("/buyer/marketplace"); return; }
@@ -86,21 +89,37 @@ export default function CropDetail() {
       .finally(() => setLoading(false));
   }, [cropId, navigate]);
 
-  useStockSocket(({ cropId: updatedId, quantity, outOfStock }) => {
-    if (updatedId === cropId) {
+  // ── Real-time socket events ──────────────────────────────────────
+  const socket = useMarketSocket({
+    stock_update: ({ cropId: updatedId, quantity, outOfStock }) => {
+      if (updatedId !== cropId) return;
       setCrop((prev) => prev ? { ...prev, quantity, status: outOfStock ? "sold" : prev.status } : prev);
+      setLastUpdated(new Date());
       if (outOfStock) toast("This crop is now out of stock", { icon: "⚠️" });
-    }
-  });
-
-  useOfferSocket({
-    crop_price_update: ({ cropId: updatedId, price }) => {
-      if (updatedId === cropId) {
-        setCrop((prev) => prev ? { ...prev, price } : prev);
-        toast(`Price updated to ₹${price}`, { icon: "💰" });
-      }
+    },
+    crop_price_update: ({ cropId: updatedId, price, priceData }) => {
+      const newPrice = price ?? priceData?.price;
+      if (updatedId !== cropId || !newPrice) return;
+      setCrop((prev) => prev ? { ...prev, price: newPrice } : prev);
+      setLastUpdated(new Date());
+      setPriceFlash(true);
+      setTimeout(() => setPriceFlash(false), 1500);
+      toast(`Price updated to ₹${newPrice}`, { icon: "💰" });
+    },
+    viewer_count: ({ cropId: cid, count }) => {
+      if (cid === cropId) setViewerCount(count);
     },
   });
+  socketRef.current = socket;
+
+  // Join/leave crop room for viewer count
+  useEffect(() => {
+    if (!cropId || !socketRef.current) return;
+    socketRef.current.emit("join_crop_room", { cropId });
+    return () => {
+      socketRef.current?.emit("leave_crop_room", { cropId });
+    };
+  }, [cropId]);
 
   const handleAddToCart = async (qty) => {
     setAddingCart(true);
@@ -180,6 +199,24 @@ export default function CropDetail() {
             <span className="text-slate-600 truncate max-w-[180px] sm:max-w-xs">{crop.cropName}</span>
           </div>
           <div className="flex items-center gap-2">
+            {/* Live viewer count */}
+            {viewerCount > 0 && (
+              <motion.span
+                key={viewerCount}
+                initial={{ scale: 1.15 }}
+                animate={{ scale: 1 }}
+                className="hidden sm:flex items-center gap-1.5 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2.5 py-1"
+              >
+                <Users size={11} className="text-amber-600" />
+                {viewerCount} viewing
+              </motion.span>
+            )}
+            {/* Last updated */}
+            {lastUpdated && (
+              <span className="hidden sm:flex items-center gap-1 text-[10px] text-slate-400">
+                <Clock size={10} /> Updated {lastUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+              </span>
+            )}
             {crop.views != null && (
               <span className="hidden sm:flex items-center gap-1.5 text-slate-400 text-xs">
                 <Eye size={12} /> {crop.views.toLocaleString()} views
@@ -235,6 +272,7 @@ export default function CropDetail() {
                 onBuyNow={handleBuyNow}
                 onChat={() => setShowChat(true)}
                 addingCart={addingCart}
+                priceFlash={priceFlash}
               />
             </div>
 
@@ -285,6 +323,7 @@ export default function CropDetail() {
                 onBuyNow={handleBuyNow}
                 onChat={() => setShowChat(true)}
                 addingCart={addingCart}
+                priceFlash={priceFlash}
               />
 
               {/* Trust badges */}

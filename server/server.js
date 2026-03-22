@@ -44,9 +44,14 @@ import reviewRoutes from "./routes/reviewRoutes.js";
 import scheduleRoutes from "./routes/scheduleRoutes.js";
 import farmerMarketplaceRoutes from "./routes/farmerMarketplaceRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
+import uploadRoutes from "./routes/uploadRoutes.js";
+import { fileURLToPath } from "url";
+import path from "path";
 
 
 dotenv.config();
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /* CONNECT DATABASE */
 connectDB().then(() => seedAdminUser()).catch(() => {});
@@ -79,6 +84,9 @@ app.use(cors({
 app.use(cookieParser());
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+
+// Serve uploaded chat images as static files
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 /* ROUTES */
 app.use("/api/auth", authRoutes);
@@ -117,6 +125,7 @@ app.use("/api/reviews", reviewRoutes);
 app.use("/api/schedule", scheduleRoutes);
 app.use("/api/farmer/marketplace", farmerMarketplaceRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/upload", uploadRoutes);
 /* HEALTH CHECK ROUTE */
 app.get("/", (req, res) => {
   res.send("API is running...");

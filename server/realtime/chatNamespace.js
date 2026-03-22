@@ -133,17 +133,20 @@ export const registerChatNamespace = (io) => {
           orderRef,
         });
 
+        // Populate sender photo for real-time avatar display
+        const populatedMsg = await msg.populate("sender", "name photo avatar role");
+
         const msgPayload = {
-          _id:            msg._id,
+          _id:            populatedMsg._id,
           conversation:   conversationId,
-          sender:         userId,
+          sender:         populatedMsg.sender,   // full object with photo/avatar
           receiver:       receiverId,
-          messageType:    msg.messageType,
-          text:           msg.text,
-          imageUrl:       msg.imageUrl,
-          orderRef:       msg.orderRef,
-          deliveryStatus: msg.deliveryStatus,
-          createdAt:      msg.createdAt,
+          messageType:    populatedMsg.messageType,
+          text:           populatedMsg.text,
+          imageUrl:       populatedMsg.imageUrl,
+          orderRef:       populatedMsg.orderRef,
+          deliveryStatus: populatedMsg.deliveryStatus,
+          createdAt:      populatedMsg.createdAt,
         };
 
         // Broadcast to everyone in the conversation room (sender + receiver)

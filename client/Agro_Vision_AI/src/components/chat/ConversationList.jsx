@@ -16,15 +16,23 @@ export default function ConversationList({
 
   const filtered = conversations.filter((c) => {
     if (!query.trim()) return true;
-    const other = c.buyer?._id === currentUserId ? c.farmer : c.buyer;
+    const isBuyer = c.buyer?._id === currentUserId || c.buyer === currentUserId;
+    const other = isBuyer ? c.farmer : c.buyer;
     return other?.name?.toLowerCase().includes(query.toLowerCase());
   });
 
   return (
     <div className="flex flex-col h-full border-r border-slate-100">
       {/* Header */}
-      <div className="px-4 py-4 border-b border-slate-100">
-        <h2 className="text-slate-800 font-bold text-base mb-3">Messages</h2>
+      <div className="px-4 py-4 border-b border-slate-100 bg-white">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-slate-800 font-bold text-base">Messages</h2>
+          {conversations.length > 0 && (
+            <span className="text-[10px] bg-green-100 text-green-700 font-bold px-2 py-0.5 rounded-full">
+              {conversations.length}
+            </span>
+          )}
+        </div>
         <div className="relative">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
@@ -32,7 +40,7 @@ export default function ConversationList({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search conversations..."
-            className="w-full pl-8 pr-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-300 focus:border-transparent"
+            className="w-full pl-8 pr-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-300 focus:border-transparent transition"
           />
         </div>
       </div>

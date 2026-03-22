@@ -8,6 +8,7 @@ import { fetchCart } from "../../services/cartAPI.js";
 import ProfileAvatar   from "../profile/ProfileAvatar.jsx";
 import ProfileDropdown from "../profile/ProfileDropdown.jsx";
 import ProfilePanel    from "../profile/ProfilePanel.jsx";
+import LanguageSwitcher from "./LanguageSwitcher.jsx";
 
 const Navbar = () => {
 
@@ -159,6 +160,9 @@ const Navbar = () => {
         {/* Desktop Buttons */}
         <div className="hidden md:flex items-center gap-3">
 
+          {/* Language switcher — always visible */}
+          <LanguageSwitcher compact />
+
           {!user ? (
 
             <>
@@ -286,6 +290,11 @@ const Navbar = () => {
             </div>
 
           )}
+
+          {/* Language switcher in mobile menu */}
+          <div className="pt-2">
+            <LanguageSwitcher />
+          </div>
 
         </div>
 

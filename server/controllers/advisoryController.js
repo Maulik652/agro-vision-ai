@@ -1,5 +1,6 @@
 import * as svc from "../services/advisoryService.js";
 import aiClient from "../config/aiServiceClient.js";
+import { emitNewAdvisory, emitAdvisoryBroadcast } from "../realtime/socketServer.js";
 
 const ok   = (res, data, status = 200) => res.status(status).json({ success: true, data });
 const fail = (res, err) => res.status(err.status || 500).json({ success: false, message: err.message });
@@ -21,18 +22,31 @@ export const createAdvisory     = async (req, res) => {
 };
 export const updateAdvisory     = async (req, res) => { try { ok(res, await svc.updateAdvisory(req.params.id, req.user._id, req.body)); } catch (e) { fail(res, e); } };
 export const deleteAdvisory     = async (req, res) => { try { ok(res, await svc.deleteAdvisory(req.params.id, req.user._id)); } catch (e) { fail(res, e); } };
-export const publishAdvisory    = async (req, res) => { try { ok(res, await svc.publishAdvisory(req.params.id, req.user._id)); } catch (e) { fail(res, e); } };
+export const publishAdvisory    = async (req, res) => {
+  try {
+    const advisory = await svc.publishAdvisory(req.params.id, req.user._id);
+    // Emit real-time to all farmers and buyers
+    emitNewAdvisory(advisory);
+    ok(res, advisory);
+  } catch (e) { fail(res, e); }
+};
 export const changeStatus       = async (req, res) => {
   try {
     const { status } = req.body;
-    ok(res, await svc.changeStatus(req.params.id, req.user._id, status));
+    const advisory = await svc.changeStatus(req.params.id, req.user._id, status);
+    // If status changed to "published", emit real-time
+    if (status === "published") emitNewAdvisory(advisory);
+    ok(res, advisory);
   } catch (e) { fail(res, e); }
 };
 export const broadcastAlert     = async (req, res) => {
   try {
     const { title, message, category, priority } = req.body;
     if (!title || !message) return res.status(400).json({ success: false, message: "title and message required" });
-    ok(res, await svc.broadcastAlert(req.user._id, { title, message, category, priority }));
+    const result = await svc.broadcastAlert(req.user._id, { title, message, category, priority });
+    // Emit real-time broadcast to all farmers and buyers
+    emitAdvisoryBroadcast({ title, message, category, priority });
+    ok(res, result);
   } catch (e) { fail(res, e); }
 };
 export const getAnalytics       = async (req, res) => { try { ok(res, await svc.fetchAnalytics(req.user._id)); } catch (e) { fail(res, e); } };

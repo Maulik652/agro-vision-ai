@@ -24,3 +24,13 @@ export const markRead = (conversationId) =>
 /** GET /api/chat/unread */
 export const fetchUnreadCount = () =>
   api.get("/chat/unread").then(unwrap);
+
+/** POST /api/upload/chat-image — upload image file, returns { url } */
+export const uploadChatImage = async (file) => {
+  const form = new FormData();
+  form.append("image", file);
+  const res = await api.post("/upload/chat-image", form, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return res.data; // { success, url }
+};

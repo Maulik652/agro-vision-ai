@@ -1,8 +1,6 @@
-/**
- * ConversationItem — single row in the conversations list panel.
- */
 import { motion } from "framer-motion";
 import useChatStore from "../../store/chatStore.js";
+import ChatAvatar from "./ChatAvatar.jsx";
 
 const formatTime = (iso) => {
   if (!iso) return "";
@@ -19,10 +17,12 @@ export default function ConversationItem({ conversation, currentUserId, isActive
 
   const isBuyer   = conversation.buyer?._id === currentUserId || conversation.buyer === currentUserId;
   const other     = isBuyer ? conversation.farmer : conversation.buyer;
-  const otherId   = other?._id ?? other;
+  const otherId   = String(other?._id ?? other ?? "");
   const otherName = other?.name ?? "Unknown";
   const unread    = isBuyer ? conversation.unreadBuyer : conversation.unreadFarmer;
-  const online    = isOnline(String(otherId));
+  const online    = isOnline(otherId);
+  const lastMsg   = conversation.lastMessage || "Start a conversation";
+  const isImage   = lastMsg === "📷 Image";
 
   return (
     <motion.button
@@ -35,17 +35,8 @@ export default function ConversationItem({ conversation, currentUserId, isActive
           : "hover:bg-slate-50 border-r-2 border-transparent"
         }`}
     >
-      {/* Avatar */}
-      <div className="relative shrink-0">
-        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center text-white font-bold text-sm">
-          {otherName.charAt(0).toUpperCase()}
-        </div>
-        {online && (
-          <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-white" />
-        )}
-      </div>
+      <ChatAvatar user={other} size={10} showOnline online={online} />
 
-      {/* Content */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between mb-0.5">
           <p className={`text-sm truncate ${isActive ? "text-green-800 font-semibold" : "text-slate-800 font-medium"}`}>
@@ -56,8 +47,8 @@ export default function ConversationItem({ conversation, currentUserId, isActive
           </span>
         </div>
         <div className="flex items-center justify-between">
-          <p className="text-xs text-slate-400 truncate max-w-[160px]">
-            {conversation.lastMessage || "Start a conversation"}
+          <p className={`text-xs truncate max-w-[160px] ${unread > 0 ? "text-slate-700 font-medium" : "text-slate-400"}`}>
+            {isImage ? <span className="flex items-center gap-1">📷 <span>Photo</span></span> : lastMsg}
           </p>
           {unread > 0 && (
             <span className="ml-2 min-w-[18px] h-[18px] px-1 rounded-full bg-green-600 text-white text-[10px] font-bold flex items-center justify-center shrink-0">
@@ -65,6 +56,9 @@ export default function ConversationItem({ conversation, currentUserId, isActive
             </span>
           )}
         </div>
+        {other?.city && (
+          <p className="text-[10px] text-slate-300 mt-0.5 truncate">{other.city}, {other.state}</p>
+        )}
       </div>
     </motion.button>
   );

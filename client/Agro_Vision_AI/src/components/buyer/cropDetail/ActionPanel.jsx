@@ -14,7 +14,7 @@ const UNIT_BUYER_HINT = {
   ton:     "Bulk buyer (1 ton = 1000 kg)",
 };
 
-export default function ActionPanel({ crop, onAddToCart, onBuyNow, onChat, addingCart, buyingNow }) {
+export default function ActionPanel({ crop, onAddToCart, onBuyNow, onChat, addingCart, buyingNow, priceFlash }) {
   const navigate = useNavigate();
   const unit    = crop?.quantityUnit ?? "kg";
   const minQty  = Math.max(UNIT_MIN_ORDER[unit] ?? 1, crop?.minOrderQty ?? 1);
@@ -149,10 +149,27 @@ export default function ActionPanel({ crop, onAddToCart, onBuyNow, onChat, addin
       {/* Price */}
       <div>
         <div className="flex items-baseline gap-2">
-          <span className="text-3xl font-bold text-slate-900">₹{displayPrice}</span>
+          <motion.span
+            key={displayPrice}
+            animate={priceFlash ? { scale: [1, 1.12, 1], color: ["#15803d", "#16a34a", "#15803d"] } : {}}
+            transition={{ duration: 0.6 }}
+            className="text-3xl font-bold text-slate-900"
+          >
+            ₹{displayPrice}
+          </motion.span>
           <span className="text-slate-400 text-sm">/{crop.quantityUnit ?? "kg"}</span>
           {acceptedPrice && (
             <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5">Offer Price</span>
+          )}
+          {priceFlash && !acceptedPrice && (
+            <motion.span
+              initial={{ opacity: 0, x: -6 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0 }}
+              className="text-xs font-semibold text-green-600 bg-green-50 border border-green-200 rounded-full px-2 py-0.5"
+            >
+              Live
+            </motion.span>
           )}
         </div>
         {crop.aiSuggestedPrice && (

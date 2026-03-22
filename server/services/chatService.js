@@ -38,7 +38,7 @@ export const startConversation = async (buyerId, { farmerId, cropId, cropName, o
       },
     },
     { upsert: true, new: true }
-  ).populate("buyer farmer", "name role");
+  ).populate("buyer farmer", "name role photo avatar city state");
 
   // Invalidate list caches for both participants
   await Promise.all([
@@ -59,7 +59,7 @@ export const getConversations = async (userId, role) => {
 
   const convs = await Conversation.find(filter)
     .sort({ lastMessageAt: -1 })
-    .populate("buyer farmer", "name role")
+    .populate("buyer farmer", "name role photo avatar city state")
     .lean();
 
   await setCache(cacheKey, convs, CONV_LIST_TTL);
@@ -83,6 +83,7 @@ export const getMessages = async (conversationId, userId, { page = 1, limit = MS
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
+      .populate("sender", "name photo avatar role")
       .lean(),
     Message.countDocuments({ conversation: conversationId }),
   ]);
